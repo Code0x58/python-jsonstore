@@ -2,6 +2,7 @@
 # -*- encoding: UTF-8 -*-
 import json
 import sys
+from collections import OrderedDict
 """
 TODO:
  * make sure inserted values are JSON serialiseable
@@ -21,22 +22,27 @@ class JSONDb(object):
 
     def __flush(self):
         with open(self.__dict__['__path'], 'wb') as f:
-            output = json.dumps(self.__dict__['__data'])
+            output = json.dumps(
+                self.__dict__['__data'],
+                indent=self.__dict__['__indent'],
+                )
             f.write(output.encode('utf-8'))
 
-    def __init__(self, path, default_to_none=False):
+    def __init__(self, path, indent=None):
         try:
-            data = json.loads(open(path, 'rb').read().decode('utf-8'))
+            data = json.loads(
+                open(path, 'rb').read().decode('utf-8'),
+                object_pairs_hook=OrderedDict,
+                )
         except ValueError:
             data = {}
         except IOError:
             data = {}
         self.__dict__['__data'] = data
         self.__dict__['__path'] = path
-        self.__dict__['__default_to_none'] = default_to_none
+        self.__dict__['__indent'] = indent
 
     def __getattr__(self, key):
-        print(key)
         if key.startswith('_JSONDb__'):
             raise AttributeError
         if key in self.__dict__['__data']:
@@ -45,19 +51,19 @@ class JSONDb(object):
             raise KeyError(key)
         return None
 
-    @staticmethod
-    def __valid_object(obj):
+    @classmethod
+    def __valid_object(cls, obj):
         if obj is None:
             return True
         elif isinstance(obj, (int, float, str)):
             return True
         if isinstance(obj, dict):
             return all(
-                self.__valid_object(k) and self.__valid_object(v)
-                for k, v in obj
+                cls.__valid_object(k) and cls.__valid_object(v)
+                for k, v in obj.items()
                 )
         elif isinstance(obj, (list, tuple)):
-            return all(self.__valid_object(o) for o in obj)
+            return all(cls.__valid_object(o) for o in obj)
         elif sys.version_info < (3, ):
             return isinstance(obj, (long, unicode))
         else:
@@ -73,15 +79,44 @@ class JSONDb(object):
     def __delattr__(self, key):
         del self.__dict__['__data'][key]
 
-    __getitem__ = __getattr__
-    __setitem__ = __setattr__
+    def __get_obj(self, name):
+        steps = name.split('.')
+        path = []
+        obj = self.__dict__['__data']
+        if not name:
+            return obj
+        for step in steps:
+            path.append(step)
+            try:
+                obj = obj[step]
+            except AttributeError:
+                raise KeyError('.'.join(path))
+        return obj
 
 
-with JSONDb('jsondb.json') as db:
+    def __setitem__(self, name, value):
+        path, _, key = name.rpartition('.')
+        if self.__valid_object(value):
+            dictionary = self.__get_obj(path)
+            dictionary[key] = value
+        else:
+            raise AttributeError
+
+    def __getitem__(self, key):
+        obj = self.__get_obj(key)
+        if obj is self:
+            raise KeyError
+        return obj
+
+
+with JSONDb('jsondb.json', indent=2) as db:
     db.password = 'hello'
     db.thing = True
     db.gone = None
     del db.gone
     db.nothing = None
     db['item1'] = 1
-    db['bad.name'] = 2
+    db.dict = OrderedDict({'key1': 'a'})
+    db.dict['key1']
+    db['dict.key2'] = 'b'
+    assert db['dict.key2'] == 'b'
