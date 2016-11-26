@@ -15,7 +15,7 @@ TODO:
 """
 
 
-class JSONDb(object):
+class JsonStore(object):
     def __enter__(self):
         return self
 
@@ -43,7 +43,7 @@ class JSONDb(object):
         self.__dict__['__indent'] = indent
 
     def __getattr__(self, key):
-        if key.startswith('_JSONDb__'):
+        if key.startswith('_JsonStore__'):
             raise AttributeError
         if key in self.__dict__['__data']:
             return self.__dict__['__data'][key]

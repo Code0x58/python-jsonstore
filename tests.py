@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 import os
 import unittest
-from jsondb import JSONDb
+from jsonstore import JsonStore
 from tempfile import mktemp
 
 
@@ -23,7 +23,7 @@ class Tests(unittest.TestCase):
 
     def setUp(self):
         self._db_file = mktemp()
-        self.db = JSONDb(self._db_file)
+        self.db = JsonStore(self._db_file)
 
     def tearDown(self):
         os.remove(self._db_file)
@@ -117,9 +117,9 @@ class Tests(unittest.TestCase):
         for name, value in self.TEST_DATA.items():
             if isinstance(value, tuple):
                 value = list(value)
-            with JSONDb(db_file) as db:
+            with JsonStore(db_file) as db:
                 db.key = value
-            with JSONDb(db_file) as db:
+            with JsonStore(db_file) as db:
                 self.assertEqual(db.key, value)
 
 
