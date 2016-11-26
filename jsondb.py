@@ -3,12 +3,11 @@
 import json
 import sys
 from collections import OrderedDict
+from copy import deepcopy
 """
 TODO:
- * make sure inserted values are JSON serialiseable
  * document
  * make backup file when saving
- * don't eat ValueError+IOError in constructor
  * add transaction contexts
 """
 
@@ -29,15 +28,13 @@ class JSONDb(object):
             f.write(output.encode('utf-8'))
 
     def __init__(self, path, indent=None):
-        try:
-            data = json.loads(
-                open(path, 'rb').read().decode('utf-8'),
-                object_pairs_hook=OrderedDict,
-                )
-        except ValueError:
-            data = {}
-        except IOError:
-            data = {}
+        with open(path, 'r+b') as f:
+            raw_data = f.read().decode('utf-8')
+        if not raw_data:
+            data = OrderedDict()
+        else:
+            data = json.loads(raw_data, object_pairs_hook=OrderedDict)
+
         self.__dict__['__data'] = data
         self.__dict__['__path'] = path
         self.__dict__['__indent'] = indent
@@ -47,23 +44,29 @@ class JSONDb(object):
             raise AttributeError
         if key in self.__dict__['__data']:
             return self.__dict__['__data'][key]
-        if not self.__dict__['__default_to_none']:
-            raise KeyError(key)
+        raise KeyError(key)
         return None
 
     @classmethod
-    def __valid_object(cls, obj):
+    def __valid_object(cls, obj, parents=None):
+        if isinstance(obj, (dict, list)):
+            if parents is None:
+                parents = [obj]
+            elif any(o is obj for o in parents):
+                raise ValueError("Cycle detected in list/dictionary")
+            parents.append(obj)
+
         if obj is None:
             return True
-        elif isinstance(obj, (int, float, str)):
+        if isinstance(obj, (bool, int, float, str)):
             return True
         if isinstance(obj, dict):
             return all(
-                cls.__valid_object(k) and cls.__valid_object(v)
+                cls.__valid_object(k, parents) and cls.__valid_object(v, parents)
                 for k, v in obj.items()
                 )
         elif isinstance(obj, (list, tuple)):
-            return all(cls.__valid_object(o) for o in obj)
+            return all(cls.__valid_object(o, parents) for o in obj)
         elif sys.version_info < (3, ):
             return isinstance(obj, (long, unicode))
         else:
@@ -74,7 +77,7 @@ class JSONDb(object):
             raise AttributeError
         if key.startswith(' '):
             raise AttributeError
-        self.__dict__['__data'][key] = value
+        self.__dict__['__data'][key] = deepcopy(value)
 
     def __delattr__(self, key):
         del self.__dict__['__data'][key]
@@ -98,7 +101,7 @@ class JSONDb(object):
         path, _, key = name.rpartition('.')
         if self.__valid_object(value):
             dictionary = self.__get_obj(path)
-            dictionary[key] = value
+            dictionary[key] = deepcopy(value)
         else:
             raise AttributeError
 
@@ -109,7 +112,7 @@ class JSONDb(object):
         return obj
 
 
-with JSONDb('jsondb.json', indent=2) as db:
+with JSONDb('db.json', indent=2) as db:
     db.password = 'hello'
     db.thing = True
     db.gone = None
@@ -119,4 +122,17 @@ with JSONDb('jsondb.json', indent=2) as db:
     db.dict = OrderedDict({'key1': 'a'})
     db.dict['key1']
     db['dict.key2'] = 'b'
+    db.list = [1, 2, [3, 4]]
+    try:
+        loopy = {}
+        loopy['self'] = loopy
+        db.loopy = loopy
+    except ValueError:
+        pass
+    try:
+        looper = []
+        looper.append(looper)
+        db.looper = looper
+    except ValueError:
+        pass
     assert db['dict.key2'] == 'b'
