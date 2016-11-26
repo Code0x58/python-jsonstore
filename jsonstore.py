@@ -5,6 +5,7 @@ Provides a Python class that maps values to/from a JSON file
 """
 from __future__ import absolute_import
 import json
+import os.path
 import sys
 from collections import OrderedDict
 from copy import deepcopy
@@ -31,8 +32,12 @@ class JsonStore(object):
             f.write(output.encode('utf-8'))
 
     def __init__(self, path, indent=None):
-        with open(path, 'a+b') as f:
+        if not os.path.exists(path):
+            with open(path, 'w+b'):
+                pass
+        with open(path, 'r+b') as f:
             raw_data = f.read().decode('utf-8')
+
         if not raw_data:
             data = OrderedDict()
         else:
@@ -81,8 +86,6 @@ class JsonStore(object):
 
     def __setattr__(self, key, value):
         if not self.__valid_object(value):
-            raise AttributeError
-        if key.startswith(' '):
             raise AttributeError
         self.__dict__['__data'][key] = deepcopy(value)
 

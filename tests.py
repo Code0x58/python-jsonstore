@@ -8,18 +8,18 @@ from tempfile import mktemp
 
 
 class Tests(unittest.TestCase):
-    TEST_DATA = {
-        'string': "hello",
-        'unicode': u"💩",
-        'integer': 1,
-        'none': None,
-        'big_integer': 18446744073709551616,
-        'float': 1.0,
-        'boolean': True,
-        'list': [1, 2],
-        'tuple': (1, 2),
-        'dictionary': {'key': "value"},
-    }
+    TEST_DATA = (
+        ('string', "hello"),
+        ('unicode', u"💩"),
+        ('integer', 1),
+        ('none', None),
+        ('big_integer', 18446744073709551616),
+        ('float', 1.0),
+        ('boolean', True),
+        ('list', [1, 2]),
+        ('tuple', (1, 2)),
+        ('dictionary', {'key': "value"}),
+    )
 
     def setUp(self):
         self._db_file = mktemp()
@@ -62,19 +62,19 @@ class Tests(unittest.TestCase):
 
     def test_assign_valid_types(self):
         for method in (self._setattr, self._setitem):
-            for name, value in self.TEST_DATA.items():
+            for name, value in self.TEST_DATA:
                 method(name, value)
 
     def test_assign_invalid_types(self):
         for method in (self._setattr, self._setitem):
             def assign(value):
-                method('key', value)
-            self.assertRaises(ValueError, assign(set()))
-            self.assertRaises(ValueError, assign(object()))
-            self.assertRaises(ValueError, assign(None for i in range(2)))
+                return method('key', value)
+            self.assertRaises(AttributeError, assign(set()))
+            self.assertRaises(AttributeError, assign(object()))
+            self.assertRaises(AttributeError, assign(None for i in range(2)))
 
     def test_retrieve_values(self):
-        for name, value in self.TEST_DATA.items():
+        for name, value in self.TEST_DATA:
             self.db[name] = value
             self.assertEqual(getattr(self.db, name), value)
             self.assertEqual(self.db[name], value)
@@ -114,13 +114,13 @@ class Tests(unittest.TestCase):
 
     def test_context_and_deserialisation(self):
         db_file = mktemp()
-        for name, value in self.TEST_DATA.items():
+        for name, value in self.TEST_DATA:
             if isinstance(value, tuple):
                 value = list(value)
             with JsonStore(db_file) as db:
-                db.key = value
+                db[name] = value
             with JsonStore(db_file) as db:
-                self.assertEqual(db.key, value)
+                self.assertEqual(getattr(db, name), value)
 
 
 if __name__ == '__main__':
