@@ -10,7 +10,6 @@ from collections import OrderedDict
 from copy import deepcopy
 """
 TODO:
- * document
  * make backup file when saving
  * add transaction contexts
 """
@@ -118,28 +117,7 @@ class JSONDb(object):
             raise KeyError
         return obj
 
-
-with JSONDb('db.json', indent=2) as db:
-    db.password = 'hello'
-    db.thing = True
-    db.gone = None
-    del db.gone
-    db.nothing = None
-    db['item1'] = 1
-    db.dict = OrderedDict({'key1': 'a'})
-    db.dict['key1']
-    db['dict.key2'] = 'b'
-    db.list = [1, 2, [3, 4]]
-    try:
-        loopy = {}
-        loopy['self'] = loopy
-        db.loopy = loopy
-    except ValueError:
-        pass
-    try:
-        looper = []
-        looper.append(looper)
-        db.looper = looper
-    except ValueError:
-        pass
-    assert db['dict.key2'] == 'b'
+    def __delitem__(self, name):
+        path, _, key = name.rpartition('.')
+        obj = self.__get_obj(path)
+        del obj[key]
