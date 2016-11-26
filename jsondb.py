@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 # -*- encoding: UTF-8 -*-
+"""
+Provides a Python class that maps values to/from a JSON file
+"""
+from __future__ import absolute_import
 import json
 import sys
 from collections import OrderedDict
@@ -28,7 +32,7 @@ class JSONDb(object):
             f.write(output.encode('utf-8'))
 
     def __init__(self, path, indent=None):
-        with open(path, 'r+b') as f:
+        with open(path, 'a+b') as f:
             raw_data = f.read().decode('utf-8')
         if not raw_data:
             data = OrderedDict()
@@ -49,6 +53,10 @@ class JSONDb(object):
 
     @classmethod
     def __valid_object(cls, obj, parents=None):
+        """
+        Determine if the object can be encoded into JSON
+        """
+        # pylint: disable=unicode-builtin,long-builtin
         if isinstance(obj, (dict, list)):
             if parents is None:
                 parents = [obj]
@@ -95,7 +103,6 @@ class JSONDb(object):
             except AttributeError:
                 raise KeyError('.'.join(path))
         return obj
-
 
     def __setitem__(self, name, value):
         path, _, key = name.rpartition('.')
