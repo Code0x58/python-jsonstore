@@ -7,6 +7,7 @@ TODO:
  * document
  * make backup file when saving
  * don't eat ValueError+IOError in constructor
+ * avoid double flush when used as context manager
 """
 
 
@@ -21,6 +22,9 @@ class JSONDb(object):
         with open(self.__dict__['__path'], 'wb') as f:
             output = json.dumps(self.__dict__['__data'])
             f.write(output.encode('utf-8'))
+
+    def __del__(self):
+        self.__flush()
 
     def __init__(self, path, default_to_none=False):
         try:
@@ -48,11 +52,15 @@ class JSONDb(object):
             raise AttributeError
         self.__dict__['__data'][key] = value
 
+    def __delattr__(self, key):
+        del self.__dict__['__data'][key]
+
     __getitem__ = __getattr__
     __setitem__ = __setattr__
 
-db = JSONDb('jsondb.json')
-db.ok = 1
 
-with JSONDb('jsondb.json') as database:
-    database.password = 'hello'
+with JSONDb('jsondb.json') as db:
+    db.password = 'hello'
+    db.thing = True
+    db.other = 1
+    del db.other
