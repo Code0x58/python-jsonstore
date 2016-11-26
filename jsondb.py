@@ -19,7 +19,8 @@ class JSONDb(object):
 
     def __flush(self):
         with open(self.__dict__['__path'], 'wb') as f:
-            f.write(bytes(json.dumps(self.__dict__['__data']), 'UTF-8'))
+            output = json.dumps(self.__dict__['__data'])
+            f.write(output.encode('utf-8'))
 
     def __init__(self, path, default_to_none=False):
         try:
