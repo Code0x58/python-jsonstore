@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # -*- encoding: UTF-8 -*-
 import json
+import sys
 """
 TODO:
  * make sure inserted values are JSON serialiseable
  * document
  * make backup file when saving
  * don't eat ValueError+IOError in constructor
- * avoid double flush when used as context manager
+ * add transaction contexts
 """
 
 
@@ -22,9 +23,6 @@ class JSONDb(object):
         with open(self.__dict__['__path'], 'wb') as f:
             output = json.dumps(self.__dict__['__data'])
             f.write(output.encode('utf-8'))
-
-    def __del__(self):
-        self.__flush()
 
     def __init__(self, path, default_to_none=False):
         try:
@@ -47,7 +45,27 @@ class JSONDb(object):
             raise KeyError(key)
         return None
 
+    @staticmethod
+    def __valid_object(obj):
+        if obj is None:
+            return True
+        elif isinstance(obj, (int, float, str)):
+            return True
+        if isinstance(obj, dict):
+            return all(
+                self.__valid_object(k) and self.__valid_object(v)
+                for k, v in obj
+                )
+        elif isinstance(obj, (list, tuple)):
+            return all(self.__valid_object(o) for o in obj)
+        elif sys.version_info < (3, ):
+            return isinstance(obj, (long, unicode))
+        else:
+            return False
+
     def __setattr__(self, key, value):
+        if not self.__valid_object(value):
+            raise AttributeError
         if key.startswith(' '):
             raise AttributeError
         self.__dict__['__data'][key] = value
@@ -62,5 +80,8 @@ class JSONDb(object):
 with JSONDb('jsondb.json') as db:
     db.password = 'hello'
     db.thing = True
-    db.other = 1
-    del db.other
+    db.gone = None
+    del db.gone
+    db.nothing = None
+    db['item1'] = 1
+    db['bad.name'] = 2
