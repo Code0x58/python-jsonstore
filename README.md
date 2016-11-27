@@ -2,8 +2,8 @@
 This module provides a class that maps keys and values from a JSON file onto its
 attributes.
 
-The goal was to provide a DRY way of loading and saving configuration in a
-familiar human readable format. This is a bit more flexible than the
+The goal was to provide a convenient way of loading and saving configuration in
+a familiar human readable format. This is a bit more flexible than the
 [configparser](https://docs.python.org/3/library/configparser.html) module which
 is included with Python.
 
