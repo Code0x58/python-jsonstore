@@ -9,11 +9,6 @@ import os.path
 import sys
 from collections import OrderedDict
 from copy import deepcopy
-"""
-TODO:
- * make backup file when saving
- * add transaction contexts
-"""
 
 
 class JsonStore(object):
@@ -92,11 +87,14 @@ class JsonStore(object):
     def __delattr__(self, key):
         del self.__dict__['__data'][key]
 
-    def __get_obj(self, name):
-        steps = name.split('.')
+    def __get_obj(self, full_path):
+        """
+        Returns the object which is under the given path
+        """
+        steps = full_path.split('.')
         path = []
         obj = self.__dict__['__data']
-        if not name:
+        if not full_path:
             return obj
         for step in steps:
             path.append(step)

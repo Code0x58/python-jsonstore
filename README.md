@@ -23,18 +23,17 @@ with JsonStore('config.json', indent=2) as store:
     'for-you': u"💐",
   }
 
-  # you can use […] to set/get/delete almost arbitrary value
+  # you can use […] to set/get/delete almost arbitrary keys
   store['some_key'] = "a value"
   # the key is split on '.'s and works on dictionaries
   del store['a_dictionary.dict-list']
   store['a_dictionary.new_value'] = "old value"
 
-  # deep copies are made when assigning at the top level
+  # deep copies are made when assigning values
   my_list = ['fun']
   store.a_list = my_list
   assert store.a_list is not my_list
-  # new deep copies are returned to avoid unsanitary changes being made
-  # to lists and dicts
+  # deep copies are also returned to avoid unsanitary changes being made
   store.a_dictionary['new_value'] = "new value"  # won't update the store!
   assert store.a_dictionary['new_value'] == "old value"
   assert store.a_dictionary is not store.a_dictionary
