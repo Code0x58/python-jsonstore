@@ -8,6 +8,10 @@ from jsonstore import JsonStore
 from tempfile import mktemp
 
 
+class TransactionBreaker(Exception):
+    pass
+
+
 class Tests(unittest.TestCase):
     TEST_DATA = (
         ('string', "hello"),
@@ -24,7 +28,7 @@ class Tests(unittest.TestCase):
 
     def setUp(self):
         self._store_file = mktemp()
-        self.store = JsonStore(self._store_file, indent=None)
+        self.store = JsonStore(self._store_file, indent=None, auto_commit=True)
 
     def tearDown(self):
         os.remove(self._store_file)
@@ -190,6 +194,40 @@ class Tests(unittest.TestCase):
         with open(store_file) as f:
             self.assertEqual({}, json.load(f))
 
+    def test_transaction_rollback(self):
+        self.store.value = 1
+        try:
+            with self.store:
+                self.store.value = 2
+                try:
+                    with self.store:
+                        self.store.value = 3
+                        raise TransactionBreaker
+                except TransactionBreaker:
+                    pass
+                self.assertEqual(self.store.value, 2)
+                raise TransactionBreaker
+        except TransactionBreaker:
+            pass
+        self.assertEqual(self.store.value, 1)
+
+    def test_transaction_commit(self):
+        self.store.value = 1
+        with self.store:
+            self.store.value = 2
+        self.assertEqual(self.store.value, 2)
+
+    def test_transaction_write(self):
+        with self.store:
+            self.store.value1 = 1
+            with open(self._store_file) as f:
+                self.assertEqual(f.read(), '{}')
+            with self.store:
+                self.store.value2 = 2
+            with open(self._store_file) as f:
+                self.assertEqual(f.read(), '{}')
+        with open(self._store_file) as f:
+            self.assertEqual(f.read(), '{"value1": 1, "value2": 2}')
 
 if __name__ == '__main__':
     unittest.main()

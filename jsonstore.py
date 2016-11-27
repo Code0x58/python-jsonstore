@@ -13,10 +13,22 @@ from copy import deepcopy
 
 class JsonStore(object):
     def __enter__(self):
+        current_state = self.__dict__['_data']
+        self.__dict__['_states'].append(current_state)
+        self.__dict__['_data'] = deepcopy(current_state)
         return self
 
     def __exit__(self, *args):
-        self._write()
+        previous_state = self.__dict__['_states'].pop()
+        if not any(args):
+            previous_state.update(self.__dict__['_data'])
+            if not self.__dict__['_states']:
+                self._write()
+        self.__dict__['_data'] = previous_state
+
+    def _do_auto_commit(self):
+        if self._auto_commit and not self.__dict__['_states']:
+            self._write()
 
     def _load(self):
         if not os.path.exists(self._path):
@@ -49,6 +61,7 @@ class JsonStore(object):
             '_data': None,
             '_path': path,
             '_indent': indent,
+            '_states': [],
         })
         self._load()
 
@@ -91,8 +104,7 @@ class JsonStore(object):
         if not self._valid_object(value):
             raise AttributeError
         self._data[key] = deepcopy(value)
-        if self._auto_commit:
-            self._write()
+        self._do_auto_commit()
 
     def __delattr__(self, key):
         del self._data[key]
@@ -119,8 +131,7 @@ class JsonStore(object):
         if self._valid_object(value):
             dictionary = self.__get_obj(path)
             dictionary[key] = deepcopy(value)
-            if self._auto_commit:
-                self._write()
+            self._do_auto_commit()
         else:
             raise AttributeError
 
