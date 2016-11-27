@@ -14,7 +14,7 @@ This works with Python 2.7+ and Python 3.0+
 from jsonstore import JsonStore
 
 # the JSON file is saved when the context manager exits
-with JsonStore('config.json', indent=2) as store:
+with JsonStore('config.json', indent=2, auto_commit=False) as store:
   store.a_string = "something"
   store.a_list = [1, 2, 3]
   store.a_dictionary = {
@@ -37,4 +37,8 @@ with JsonStore('config.json', indent=2) as store:
   store.a_dictionary['new_value'] = "new value"  # won't update the store!
   assert store.a_dictionary['new_value'] == "old value"
   assert store.a_dictionary is not store.a_dictionary
+
+# can also use it in auto-commit mode which writes out on any change
+store = JsonStore('config.json', indent=2)
+store.a_string = "something else"
 ```

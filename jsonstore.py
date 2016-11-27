@@ -16,12 +16,12 @@ class JsonStore(object):
         return self
 
     def __exit__(self, *args):
-        self._flush()
+        self._write()
 
     def _load(self):
         if not os.path.exists(self._path):
-            with open(self._path, 'w+b'):
-                pass
+            with open(self._path, 'w+b') as f:
+                f.write('{}'.encode('utf-8'))
         with open(self._path, 'r+b') as f:
             raw_data = f.read().decode('utf-8')
         if not raw_data:
@@ -33,7 +33,7 @@ class JsonStore(object):
             raise ValueError("Root element is not an object")
         self.__dict__['_data'] = data
 
-    def _flush(self):
+    def _write(self):
         temp = self._path + '~'
         with open(temp, 'wb') as f:
             output = json.dumps(
@@ -43,8 +43,9 @@ class JsonStore(object):
             f.write(output.encode('utf-8'))
         os.rename(temp, self._path)
 
-    def __init__(self, path, indent=None):
+    def __init__(self, path, indent=2, auto_commit=True):
         self.__dict__.update({
+            '_auto_commit': auto_commit,
             '_data': None,
             '_path': path,
             '_indent': indent,
@@ -90,6 +91,8 @@ class JsonStore(object):
         if not self._valid_object(value):
             raise AttributeError
         self._data[key] = deepcopy(value)
+        if self._auto_commit:
+            self._write()
 
     def __delattr__(self, key):
         del self._data[key]
@@ -116,6 +119,8 @@ class JsonStore(object):
         if self._valid_object(value):
             dictionary = self.__get_obj(path)
             dictionary[key] = deepcopy(value)
+            if self._auto_commit:
+                self._write()
         else:
             raise AttributeError
 

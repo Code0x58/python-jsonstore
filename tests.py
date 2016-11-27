@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 from __future__ import absolute_import
+import json
 import os
 import unittest
 from jsonstore import JsonStore
@@ -23,7 +24,7 @@ class Tests(unittest.TestCase):
 
     def setUp(self):
         self._store_file = mktemp()
-        self.store = JsonStore(self._store_file)
+        self.store = JsonStore(self._store_file, indent=None)
 
     def tearDown(self):
         os.remove(self._store_file)
@@ -59,6 +60,18 @@ class Tests(unittest.TestCase):
         def f():
             return self.store[key]
         return f
+
+    def test_new_store(self):
+        store_file = mktemp()
+        JsonStore(store_file, auto_commit=True)
+        with open(self._store_file) as f:
+            self.assertEqual(f.read(), '{}')
+        os.remove(store_file)
+
+        JsonStore(store_file, auto_commit=False)
+        with open(self._store_file) as f:
+            self.assertEqual(f.read(), '{}')
+        os.remove(store_file)
 
     def test_assign_valid_types(self):
         for method in (self._setattr, self._setitem):
@@ -152,6 +165,31 @@ class Tests(unittest.TestCase):
             with open(self._store_file, 'w') as f:
                 f.write(bad_data)
             self.assertRaises(ValueError, self.store._load)
+
+    def test_auto_commit(self):
+        store_file = mktemp()
+        store = JsonStore(store_file, indent=None, auto_commit=True)
+        store.value1 = 1
+        with open(store_file) as f:
+            self.assertEqual(
+                {'value1': 1},
+                json.load(f),
+                )
+        store['value2'] = 2
+        with open(store_file) as f:
+            self.assertEqual(
+                {'value1': 1, 'value2': 2},
+                json.load(f),
+                )
+
+    def test_no_auto_commit(self):
+        store_file = mktemp()
+        store = JsonStore(store_file, indent=None, auto_commit=False)
+        store.value1 = 1
+        store['value2'] = 2
+        with open(store_file) as f:
+            self.assertEqual({}, json.load(f))
+
 
 if __name__ == '__main__':
     unittest.main()
