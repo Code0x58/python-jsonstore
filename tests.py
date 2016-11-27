@@ -22,42 +22,42 @@ class Tests(unittest.TestCase):
     )
 
     def setUp(self):
-        self._db_file = mktemp()
-        self.db = JsonStore(self._db_file)
+        self._store_file = mktemp()
+        self.store = JsonStore(self._store_file)
 
     def tearDown(self):
-        os.remove(self._db_file)
+        os.remove(self._store_file)
 
     def _setattr(self, key, value):
         """
-        Return a callable that assigns self.db.key to value
+        Return a callable that assigns self.store.key to value
         """
         def f():
-            setattr(self.db, key, value)
+            setattr(self.store, key, value)
         return f
 
     def _setitem(self, key, value):
         """
-        Return a callable that assigns self.db[key] to value
+        Return a callable that assigns self.store[key] to value
         """
         def f():
-            self.db[key] = value
+            self.store[key] = value
         return f
 
     def _getattr(self, key):
         """
-        Return a callable that assigns self.db.key to value
+        Return a callable that assigns self.store.key to value
         """
         def f():
-            return getattr(self.db, key)
+            return getattr(self.store, key)
         return f
 
     def _getitem(self, key):
         """
-        Return a callable that assigns self.db[key] to value
+        Return a callable that assigns self.store[key] to value
         """
         def f():
-            return self.db[key]
+            return self.store[key]
         return f
 
     def test_assign_valid_types(self):
@@ -75,9 +75,9 @@ class Tests(unittest.TestCase):
 
     def test_retrieve_values(self):
         for name, value in self.TEST_DATA:
-            self.db[name] = value
-            self.assertEqual(getattr(self.db, name), value)
-            self.assertEqual(self.db[name], value)
+            self.store[name] = value
+            self.assertEqual(getattr(self.store, name), value)
+            self.assertEqual(self.store[name], value)
 
     def test_assign_cycle(self):
         test_list = []
@@ -92,35 +92,35 @@ class Tests(unittest.TestCase):
         self.assertRaises(KeyError, self._setitem('dictionary.noexist', None))
         self.assertRaises(KeyError, self._getitem('dictionary.noexist'))
 
-        self.db.dictionary = {'a': 1}
-        self.db['dictionary.exist'] = None
-        self.assertIsNone(self.db.dictionary['exist'])
-        self.assertIsNone(self.db['dictionary.exist'])
+        self.store.dictionary = {'a': 1}
+        self.store['dictionary.exist'] = None
+        self.assertIsNone(self.store.dictionary['exist'])
+        self.assertIsNone(self.store['dictionary.exist'])
 
-        self.db['dictionary.a'] = 2
-        del self.db['dictionary.exist']
+        self.store['dictionary.a'] = 2
+        del self.store['dictionary.exist']
         self.assertRaises(KeyError, self._getitem('dictionary.exist'))
-        self.assertNotIn('exist', self.db.dictionary)
-        self.assertEqual(self.db.dictionary, {'a': 2})
+        self.assertNotIn('exist', self.store.dictionary)
+        self.assertEqual(self.store.dictionary, {'a': 2})
 
     def test_del(self):
-        self.db.key = None
-        del self.db.key
+        self.store.key = None
+        del self.store.key
         self.assertRaises(KeyError, self._getitem('key'))
 
-        self.db.key = None
-        del self.db['key']
+        self.store.key = None
+        del self.store['key']
         self.assertRaises(KeyError, self._getitem('key'))
 
     def test_context_and_deserialisation(self):
-        db_file = mktemp()
+        store_file = mktemp()
         for name, value in self.TEST_DATA:
             if isinstance(value, tuple):
                 value = list(value)
-            with JsonStore(db_file) as db:
-                db[name] = value
-            with JsonStore(db_file) as db:
-                self.assertEqual(getattr(db, name), value)
+            with JsonStore(store_file) as store:
+                store[name] = value
+            with JsonStore(store_file) as store:
+                self.assertEqual(getattr(store, name), value)
 
     def test_deep_copying(self):
         inner_list = []
@@ -129,11 +129,11 @@ class Tests(unittest.TestCase):
         outer_dict = {'key': inner_dict}
 
         for method in (self._getattr, self._getitem):
-            self.db.list = outer_list
+            self.store.list = outer_list
             self.assertIsNot(method('list')(), outer_list)
             self.assertIsNot(method('list')()[0], inner_list)
 
-            self.db.dict = outer_dict
+            self.store.dict = outer_dict
             self.assertIsNot(method('dict')(), outer_dict)
             self.assertIsNot(method('dict')()['key'], inner_dict)
 
@@ -144,14 +144,14 @@ class Tests(unittest.TestCase):
 
     def test_load(self):
         for good_data in ("{}", '{"key": "value"}'):
-            with open(self._db_file, 'w') as f:
+            with open(self._store_file, 'w') as f:
                 f.write(good_data)
-            self.db._load()
+            self.store._load()
 
         for bad_data in ('[]', '1', 'nill', '"x"'):
-            with open(self._db_file, 'w') as f:
+            with open(self._store_file, 'w') as f:
                 f.write(bad_data)
-            self.assertRaises(ValueError, self.db._load)
+            self.assertRaises(ValueError, self.store._load)
 
 if __name__ == '__main__':
     unittest.main()
