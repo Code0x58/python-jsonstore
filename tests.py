@@ -217,9 +217,12 @@ class Tests(unittest.TestCase):
 
     def test_transaction_commit(self):
         self.store.value = 1
+        self.store.remove_me = "bye"
         with self.store:
             self.store.value = 2
+            del self.store.remove_me
         self.assertEqual(self.store.value, 2)
+        self.assertRaises(KeyError, self._getattr('remove_me'))
 
     def test_transaction_write(self):
         with self.store:

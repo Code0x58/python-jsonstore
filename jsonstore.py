@@ -20,11 +20,10 @@ class JsonStore(object):
 
     def __exit__(self, *args):
         previous_state = self.__dict__['_states'].pop()
-        if not any(args):
-            previous_state.update(self.__dict__['_data'])
-            if not self.__dict__['_states']:
-                self._write()
-        self.__dict__['_data'] = previous_state
+        if any(args):
+            self.__dict__['_data'] = previous_state
+        elif not self.__dict__['_states']:
+            self._write()
 
     def _do_auto_commit(self):
         if self._auto_commit and not self.__dict__['_states']:
