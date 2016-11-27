@@ -16,13 +16,13 @@ class JsonStore(object):
         return self
 
     def __exit__(self, *args):
-        self.__flush()
+        self._flush()
 
-    def __flush(self):
-        with open(self.__dict__['__path'], 'wb') as f:
+    def _flush(self):
+        with open(self._path, 'wb') as f:
             output = json.dumps(
-                self.__dict__['__data'],
-                indent=self.__dict__['__indent'],
+                self._data,
+                indent=self._indent,
                 )
             f.write(output.encode('utf-8'))
 
@@ -38,20 +38,20 @@ class JsonStore(object):
         else:
             data = json.loads(raw_data, object_pairs_hook=OrderedDict)
 
-        self.__dict__['__data'] = data
-        self.__dict__['__path'] = path
-        self.__dict__['__indent'] = indent
+        self.__dict__.update({
+            '_data': data,
+            '_path': path,
+            '_indent': indent,
+        })
 
     def __getattr__(self, key):
-        if key.startswith('_JsonStore__'):
-            raise AttributeError
-        if key in self.__dict__['__data']:
-            return deepcopy(self.__dict__['__data'][key])
+        if key in self._data:
+            return deepcopy(self._data[key])
         else:
             raise KeyError(key)
 
     @classmethod
-    def __valid_object(cls, obj, parents=None):
+    def _valid_object(cls, obj, parents=None):
         """
         Determine if the object can be encoded into JSON
         """
@@ -69,23 +69,23 @@ class JsonStore(object):
             return True
         if isinstance(obj, dict):
             return all(
-                cls.__valid_object(k, parents) and cls.__valid_object(v, parents)
+                cls._valid_object(k, parents) and cls._valid_object(v, parents)
                 for k, v in obj.items()
                 )
         elif isinstance(obj, (list, tuple)):
-            return all(cls.__valid_object(o, parents) for o in obj)
+            return all(cls._valid_object(o, parents) for o in obj)
         elif sys.version_info < (3, ):
             return isinstance(obj, (long, unicode))
         else:
             return False
 
     def __setattr__(self, key, value):
-        if not self.__valid_object(value):
+        if not self._valid_object(value):
             raise AttributeError
-        self.__dict__['__data'][key] = deepcopy(value)
+        self._data[key] = deepcopy(value)
 
     def __delattr__(self, key):
-        del self.__dict__['__data'][key]
+        del self._data[key]
 
     def __get_obj(self, full_path):
         """
@@ -93,7 +93,7 @@ class JsonStore(object):
         """
         steps = full_path.split('.')
         path = []
-        obj = self.__dict__['__data']
+        obj = self._data
         if not full_path:
             return obj
         for step in steps:
@@ -106,7 +106,7 @@ class JsonStore(object):
 
     def __setitem__(self, name, value):
         path, _, key = name.rpartition('.')
-        if self.__valid_object(value):
+        if self._valid_object(value):
             dictionary = self.__get_obj(path)
             dictionary[key] = deepcopy(value)
         else:
