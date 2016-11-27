@@ -79,24 +79,36 @@ class JsonStore(object):
         # pylint: disable=unicode-builtin,long-builtin
         if isinstance(obj, (dict, list)):
             if parents is None:
-                parents = [obj]
+                parents = []
             elif any(o is obj for o in parents):
                 raise ValueError("Cycle detected in list/dictionary")
             parents.append(obj)
 
-        if obj is None:
-            return True
-        if isinstance(obj, (bool, int, float, str)):
-            return True
         if isinstance(obj, dict):
             return all(
-                cls._valid_object(k, parents) and cls._valid_object(v, parents)
+                cls._valid_string(k) and cls._valid_object(v, parents)
                 for k, v in obj.items()
                 )
         elif isinstance(obj, (list, tuple)):
             return all(cls._valid_object(o, parents) for o in obj)
+        else:
+            return cls._valid_value(obj)
+
+    @classmethod
+    def _valid_value(cls, value):
+        if isinstance(value, (bool, int, float, type(None))):
+            return True
+        elif sys.version_info < (3, ) and isinstance(value, long):
+            return True
+        else:
+            return cls._valid_string(value)
+
+    @classmethod
+    def _valid_string(cls, value):
+        if isinstance(value, str):
+            return True
         elif sys.version_info < (3, ):
-            return isinstance(obj, (long, unicode))
+            return isinstance(value, unicode)
         else:
             return False
 

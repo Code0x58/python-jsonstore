@@ -90,6 +90,10 @@ class Tests(unittest.TestCase):
             self.assertRaises(AttributeError, assign(object()))
             self.assertRaises(AttributeError, assign(None for i in range(2)))
 
+    def test_assign_bad_keys(self):
+        # FIXME: a ValueError would make more sense
+        self.assertRaises(AttributeError, self._setitem(1, 2))
+
     def test_retrieve_values(self):
         for name, value in self.TEST_DATA:
             self.store[name] = value
