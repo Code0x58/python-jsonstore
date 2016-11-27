@@ -142,5 +142,16 @@ class Tests(unittest.TestCase):
             self.assertIsNot(method('dict')(), method('dict')())
             self.assertIsNot(method('dict')()['key'], method('dict')()['key'])
 
+    def test_load(self):
+        for good_data in ("{}", '{"key": "value"}'):
+            with open(self._db_file, 'w') as f:
+                f.write(good_data)
+            self.db._load()
+
+        for bad_data in ('[]', '1', 'nill', '"x"'):
+            with open(self._db_file, 'w') as f:
+                f.write(bad_data)
+            self.assertRaises(ValueError, self.db._load)
+
 if __name__ == '__main__':
     unittest.main()

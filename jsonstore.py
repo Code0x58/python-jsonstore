@@ -18,6 +18,21 @@ class JsonStore(object):
     def __exit__(self, *args):
         self._flush()
 
+    def _load(self):
+        if not os.path.exists(self._path):
+            with open(self._path, 'w+b'):
+                pass
+        with open(self._path, 'r+b') as f:
+            raw_data = f.read().decode('utf-8')
+        if not raw_data:
+            data = OrderedDict()
+        else:
+            data = json.loads(raw_data, object_pairs_hook=OrderedDict)
+
+        if not isinstance(data, dict):
+            raise ValueError("Root element is not an object")
+        self.__dict__['_data'] = data
+
     def _flush(self):
         with open(self._path, 'wb') as f:
             output = json.dumps(
@@ -27,22 +42,12 @@ class JsonStore(object):
             f.write(output.encode('utf-8'))
 
     def __init__(self, path, indent=None):
-        if not os.path.exists(path):
-            with open(path, 'w+b'):
-                pass
-        with open(path, 'r+b') as f:
-            raw_data = f.read().decode('utf-8')
-
-        if not raw_data:
-            data = OrderedDict()
-        else:
-            data = json.loads(raw_data, object_pairs_hook=OrderedDict)
-
         self.__dict__.update({
-            '_data': data,
+            '_data': None,
             '_path': path,
             '_indent': indent,
         })
+        self._load()
 
     def __getattr__(self, key):
         if key in self._data:
