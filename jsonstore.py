@@ -34,12 +34,14 @@ class JsonStore(object):
         self.__dict__['_data'] = data
 
     def _flush(self):
-        with open(self._path, 'wb') as f:
+        temp = self._path + '~'
+        with open(temp, 'wb') as f:
             output = json.dumps(
                 self._data,
                 indent=self._indent,
                 )
             f.write(output.encode('utf-8'))
+        os.rename(temp, self._path)
 
     def __init__(self, path, indent=None):
         self.__dict__.update({
