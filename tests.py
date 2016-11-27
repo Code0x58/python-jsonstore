@@ -122,6 +122,25 @@ class Tests(unittest.TestCase):
             with JsonStore(db_file) as db:
                 self.assertEqual(getattr(db, name), value)
 
+    def test_deep_copying(self):
+        inner_list = []
+        outer_list = [inner_list]
+        inner_dict = {}
+        outer_dict = {'key': inner_dict}
+
+        for method in (self._getattr, self._getitem):
+            self.db.list = outer_list
+            self.assertIsNot(method('list')(), outer_list)
+            self.assertIsNot(method('list')()[0], inner_list)
+
+            self.db.dict = outer_dict
+            self.assertIsNot(method('dict')(), outer_dict)
+            self.assertIsNot(method('dict')()['key'], inner_dict)
+
+            self.assertIsNot(method('list')(), method('list')())
+            self.assertIsNot(method('list')()[0], method('list')()[0])
+            self.assertIsNot(method('dict')(), method('dict')())
+            self.assertIsNot(method('dict')()['key'], method('dict')()['key'])
 
 if __name__ == '__main__':
     unittest.main()

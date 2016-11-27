@@ -51,9 +51,9 @@ class JsonStore(object):
         if key.startswith('_JsonStore__'):
             raise AttributeError
         if key in self.__dict__['__data']:
-            return self.__dict__['__data'][key]
-        raise KeyError(key)
-        return None
+            return deepcopy(self.__dict__['__data'][key])
+        else:
+            raise KeyError(key)
 
     @classmethod
     def __valid_object(cls, obj, parents=None):
@@ -118,7 +118,7 @@ class JsonStore(object):
         obj = self.__get_obj(key)
         if obj is self:
             raise KeyError
-        return obj
+        return deepcopy(obj)
 
     def __delitem__(self, name):
         path, _, key = name.rpartition('.')
