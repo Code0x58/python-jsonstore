@@ -9,36 +9,59 @@ is included with Python.
 
 This works with Python 2.7+ and Python 3.0+
 
-## Example
+## Examples
+
+### Basics
+```python
+# by default JsonStore commits on every change unless in a transaction
+store = JsonStore('config.json')
+store.a_string = "something"
+store.a_list = [1, 2, 3]
+store.a_dictionary = {
+  'dict-list': [{}],
+  'ln(2)': 0.69314718056,
+  'for-you': u"💐",
+}
+
+# you can use […] to set/get/delete string keys
+store['some_key'] = "a value"
+# the key is split on '.'s and works on dictionaries
+del store['a_dictionary.dict-list']
+store['a_dictionary.new_value'] = "old value"
+
+# deep copies are made when assigning values
+my_list = ['fun']
+store.a_list = my_list
+assert store.a_list is not my_list
+
+# deep copies are also returned to avoid unsanitary changes being made
+store.a_dictionary['new_value'] = "new value"  # won't update the store!
+assert store.a_dictionary['new_value'] == "old value"
+assert store.a_dictionary is not store.a_dictionary
+```
+
+### Transactions
+`JsonStore` objects can be used as [context managers](https://www.python.org/dev/peps/pep-0343/)
+to provide transactions which are rolled back in the event of an exception. The
+transaction model is primitive; you can only nest transactions.
+
+While a store is put into a transaction, it will not save changes to file until all
+of the transactions have been closed.
 ```python
 from jsonstore import JsonStore
 
-# the JSON file is saved when the context manager exits
-with JsonStore('config.json', indent=2, auto_commit=False) as store:
-  store.a_string = "something"
-  store.a_list = [1, 2, 3]
-  store.a_dictionary = {
-    'dict-list': [{}],
-    'ln(2)': 0.69314718056,
-    'for-you': u"💐",
-  }
+# even with auto_commit=True, the file won't be saved until the last contexts has been closed
+with JsonStore('config.json', indent=None, auto_commit=False) as store:
+  self.value = 1
 
-  # you can use […] to set/get/delete almost arbitrary keys
-  store['some_key'] = "a value"
-  # the key is split on '.'s and works on dictionaries
-  del store['a_dictionary.dict-list']
-  store['a_dictionary.new_value'] = "old value"
-
-  # deep copies are made when assigning values
-  my_list = ['fun']
-  store.a_list = my_list
-  assert store.a_list is not my_list
-  # deep copies are also returned to avoid unsanitary changes being made
-  store.a_dictionary['new_value'] = "new value"  # won't update the store!
-  assert store.a_dictionary['new_value'] == "old value"
-  assert store.a_dictionary is not store.a_dictionary
-
-# can also use it in auto-commit mode which writes out on any change
-store = JsonStore('config.json', indent=2)
-store.a_string = "something else"
+# the context manager will roll back changes made if an exception is raised
+store = JsonStore('config.json', indent=None)
+try:
+  with store:
+    store.value = "new"
+    raise Exception
+except Exception:
+  pass
+# here we see the value that was saved previously
+assert store.value == 1
 ```
