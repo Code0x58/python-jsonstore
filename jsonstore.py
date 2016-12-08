@@ -23,11 +23,11 @@ class JsonStore(object):
         if any(args):
             self.__dict__['_data'] = previous_state
         elif not self.__dict__['_states']:
-            self._write()
+            self._save()
 
     def _do_auto_commit(self):
         if self._auto_commit and not self.__dict__['_states']:
-            self._write()
+            self._save()
 
     def _load(self):
         if not os.path.exists(self._path):
@@ -44,7 +44,7 @@ class JsonStore(object):
             raise ValueError("Root element is not an object")
         self.__dict__['_data'] = data
 
-    def _write(self):
+    def _save(self):
         temp = self._path + '~'
         with open(temp, 'wb') as f:
             output = json.dumps(
