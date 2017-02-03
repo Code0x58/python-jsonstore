@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Code0x58/python-jsonstore.svg?branch=master)](https://travis-ci.org/Code0x58/python-jsonstore)
+
 # jsonstore
 This module provides a class that maps keys and values from a JSON file onto its
 attributes.
@@ -7,7 +9,12 @@ a familiar human readable format. This is a bit more flexible than the
 [configparser](https://docs.python.org/3/library/configparser.html) module which
 is included with Python.
 
-This works with Python 2.7+ and Python 3.0+
+This works is tested and working on Python 2.7+ and Python 3.3+. It will not
+work on 2.6 or lower, but is expected to work on 3.0-3.2. The tests do not work
+in 3.2.6 due to
+[mistreating](https://travis-ci.org/Code0x58/python-jsonstore/jobs/198150401)
+the 💩 when parsing the test code. This is also
+tested on pypy and pypy3.
 
 ## Examples
 
