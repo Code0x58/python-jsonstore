@@ -10,8 +10,11 @@ import sys
 from collections import OrderedDict
 from copy import deepcopy
 
+__all__ = ['JsonStore']
+
 
 class JsonStore(object):
+    """A class to provide object based access to a JSON file"""
     def __enter__(self):
         current_state = self.__dict__['_data']
         self.__dict__['_states'].append(current_state)
@@ -31,10 +34,10 @@ class JsonStore(object):
 
     def _load(self):
         if not os.path.exists(self._path):
-            with open(self._path, 'w+b') as f:
-                f.write('{}'.encode('utf-8'))
-        with open(self._path, 'r+b') as f:
-            raw_data = f.read().decode('utf-8')
+            with open(self._path, 'w+b') as store:
+                store.write('{}'.encode('utf-8'))
+        with open(self._path, 'r+b') as store:
+            raw_data = store.read().decode('utf-8')
         if not raw_data:
             data = OrderedDict()
         else:
@@ -46,12 +49,12 @@ class JsonStore(object):
 
     def _save(self):
         temp = self._path + '~'
-        with open(temp, 'wb') as f:
+        with open(temp, 'wb') as store:
             output = json.dumps(
                 self._data,
                 indent=self._indent,
                 )
-            f.write(output.encode('utf-8'))
+            store.write(output.encode('utf-8'))
         os.rename(temp, self._path)
 
     def __init__(self, path, indent=2, auto_commit=True):

@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 from __future__ import absolute_import
+
 import json
 import os
 import unittest
-from jsonstore import JsonStore
 from tempfile import mktemp
+
+from jsonstore import JsonStore
 
 
 class TransactionBreaker(Exception):
@@ -235,6 +237,7 @@ class Tests(unittest.TestCase):
                 self.assertEqual(f.read(), '{}')
         with open(self._store_file) as f:
             self.assertEqual(f.read(), '{"value1": 1, "value2": 2}')
+
 
 if __name__ == '__main__':
     unittest.main()
