@@ -39,44 +39,44 @@ class Tests(unittest.TestCase):
         """
         Return a callable that assigns self.store.key to value
         """
-        def f():
+        def handle():
             setattr(self.store, key, value)
-        return f
+        return handle
 
     def _setitem(self, key, value):
         """
         Return a callable that assigns self.store[key] to value
         """
-        def f():
+        def handle():
             self.store[key] = value
-        return f
+        return handle
 
     def _getattr(self, key):
         """
         Return a callable that assigns self.store.key to value
         """
-        def f():
+        def handle():
             return getattr(self.store, key)
-        return f
+        return handle
 
     def _getitem(self, key):
         """
         Return a callable that assigns self.store[key] to value
         """
-        def f():
+        def handle():
             return self.store[key]
-        return f
+        return handle
 
     def test_new_store(self):
         store_file = mktemp()
         JsonStore(store_file, auto_commit=True)
-        with open(self._store_file) as f:
-            self.assertEqual(f.read(), '{}')
+        with open(self._store_file) as handle:
+            self.assertEqual(handle.read(), '{}')
         os.remove(store_file)
 
         JsonStore(store_file, auto_commit=False)
-        with open(self._store_file) as f:
-            self.assertEqual(f.read(), '{}')
+        with open(self._store_file) as handle:
+            self.assertEqual(handle.read(), '{}')
         os.remove(store_file)
 
     def test_assign_valid_types(self):
@@ -167,29 +167,29 @@ class Tests(unittest.TestCase):
 
     def test_load(self):
         for good_data in ("{}", '{"key": "value"}'):
-            with open(self._store_file, 'w') as f:
-                f.write(good_data)
+            with open(self._store_file, 'w') as handle:
+                handle.write(good_data)
             self.store._load()
 
         for bad_data in ('[]', '1', 'nill', '"x"'):
-            with open(self._store_file, 'w') as f:
-                f.write(bad_data)
+            with open(self._store_file, 'w') as handle:
+                handle.write(bad_data)
             self.assertRaises(ValueError, self.store._load)
 
     def test_auto_commit(self):
         store_file = mktemp()
         store = JsonStore(store_file, indent=None, auto_commit=True)
         store.value1 = 1
-        with open(store_file) as f:
+        with open(store_file) as handle:
             self.assertEqual(
                 {'value1': 1},
-                json.load(f),
+                json.load(handle),
                 )
         store['value2'] = 2
-        with open(store_file) as f:
+        with open(store_file) as handle:
             self.assertEqual(
                 {'value1': 1, 'value2': 2},
-                json.load(f),
+                json.load(handle),
                 )
 
     def test_no_auto_commit(self):
@@ -197,8 +197,8 @@ class Tests(unittest.TestCase):
         store = JsonStore(store_file, indent=None, auto_commit=False)
         store.value1 = 1
         store['value2'] = 2
-        with open(store_file) as f:
-            self.assertEqual({}, json.load(f))
+        with open(store_file) as handle:
+            self.assertEqual({}, json.load(handle))
 
     def test_transaction_rollback(self):
         self.store.value = 1
@@ -229,14 +229,14 @@ class Tests(unittest.TestCase):
     def test_transaction_write(self):
         with self.store:
             self.store.value1 = 1
-            with open(self._store_file) as f:
-                self.assertEqual(f.read(), '{}')
+            with open(self._store_file) as handle:
+                self.assertEqual(handle.read(), '{}')
             with self.store:
                 self.store.value2 = 2
-            with open(self._store_file) as f:
-                self.assertEqual(f.read(), '{}')
-        with open(self._store_file) as f:
-            self.assertEqual(f.read(), '{"value1": 1, "value2": 2}')
+            with open(self._store_file) as handle:
+                self.assertEqual(handle.read(), '{}')
+        with open(self._store_file) as handle:
+            self.assertEqual(handle.read(), '{"value1": 1, "value2": 2}')
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-|Build Status|
+|Build Status| |Codacy Rating|
 
 jsonstore
 =========
@@ -84,3 +84,5 @@ file until all of the transactions have been closed.
 
 .. |Build Status| image:: https://travis-ci.org/Code0x58/python-jsonstore.svg?branch=master
    :target: https://travis-ci.org/Code0x58/python-jsonstore
+.. |Codacy Rating| image:: https://api.codacy.com/project/badge/Grade/37ea488773444de59469a3775be83faf
+   :target: https://www.codacy.com/app/evilumbrella-github/python-jsonstore?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Code0x58/python-jsonstore&amp;utm_campaign=Badge_Grade

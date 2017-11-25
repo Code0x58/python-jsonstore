@@ -1,4 +1,4 @@
-from codecs import open
+import codecs
 from os import path
 from textwrap import dedent
 
@@ -6,10 +6,9 @@ from setuptools import setup
 
 here = path.abspath(path.dirname(__file__))
 
-with open(path.join(here, "README.rst"), encoding='utf-8') as f:
+with codecs.open(path.join(here, "README.rst"), encoding='utf-8') as f:
     long_description = f.read()
 
-# TODO: convert README from .md to .rst
 setup(
     name='python-jsonstore',
     version='1.0.0',
