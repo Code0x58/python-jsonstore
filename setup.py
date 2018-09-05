@@ -11,7 +11,7 @@ with codecs.open(path.join(here, "README.rst"), encoding='utf-8') as f:
 
 setup(
     name='python-jsonstore',
-    version='1.0.0',
+    use_scm_version=True,
     description="",
     long_description=long_description,
     author="Oliver Bristow",
@@ -39,4 +39,5 @@ setup(
         jsonstore
         jsonstore.tests
     """).strip().split('\n'),
+    setup_requires=["setuptools_scm", "wheel"],
 )
