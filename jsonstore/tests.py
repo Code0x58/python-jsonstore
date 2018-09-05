@@ -102,6 +102,13 @@ class Tests(unittest.TestCase):
             self.assertEqual(getattr(self.store, name), value)
             self.assertEqual(self.store[name], value)
 
+    def test_has_values(self):
+        for name, value in self.TEST_DATA:
+            self.store[name] = value
+            self.assertTrue(name in self.store)
+
+        self.assertFalse('foo' in self.store)
+
     def test_assign_cycle(self):
         test_list = []
         test_dict = {}
