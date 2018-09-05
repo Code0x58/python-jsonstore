@@ -159,3 +159,6 @@ class JsonStore(object):
         path, _, key = name.rpartition('.')
         obj = self.__get_obj(path)
         del obj[key]
+
+    def __contains__(self, key):
+        return key in self._data
