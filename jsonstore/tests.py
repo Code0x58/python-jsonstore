@@ -109,6 +109,16 @@ class Tests(unittest.TestCase):
 
         self.assertFalse('foo' in self.store)
 
+    def test_empty_key(self):
+        with self.assertRaises(KeyError):
+            self.store['']
+
+    def test_empty_store(self):
+        store_file = mktemp()
+        with open(store_file, 'wb') as f:
+            f.write(b"")
+        JsonStore(f.name)
+
     def test_assign_cycle(self):
         test_list = []
         test_dict = {}

@@ -136,7 +136,7 @@ class JsonStore(object):
             path.append(step)
             try:
                 obj = obj[step]
-            except AttributeError:
+            except KeyError:
                 raise KeyError('.'.join(path))
         return obj
 
@@ -151,7 +151,7 @@ class JsonStore(object):
 
     def __getitem__(self, key):
         obj = self.__get_obj(key)
-        if obj is self:
+        if obj is self._data:
             raise KeyError
         return deepcopy(obj)
 
