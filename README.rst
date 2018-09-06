@@ -1,5 +1,7 @@
 |Build Status| |Codacy Rating|
 
+`PyPi <https://pypi.org/project/python-jsonstore/>`__
+
 jsonstore
 =========
 
@@ -46,6 +48,7 @@ Basics
     my_list = ['fun']
     store.a_list = my_list
     assert store.a_list is not my_list
+    assert 'a_list' in store
 
     # deep copies are also returned to avoid unsanitary changes being made
     store.a_dictionary['new_value'] = "new value"  # won't update the store!
