@@ -111,13 +111,13 @@ class Tests(unittest.TestCase):
 
     def test_empty_key(self):
         with self.assertRaises(KeyError):
-            self.store['']
+            assert self.store['']
 
     def test_empty_store(self):
         store_file = mktemp()
         with open(store_file, 'wb') as f:
             f.write(b"")
-        JsonStore(f.name)
+        self.assertTrue(JsonStore(f.name))
 
     def test_assign_cycle(self):
         test_list = []
