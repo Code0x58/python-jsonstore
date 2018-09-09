@@ -121,7 +121,7 @@ class Tests(unittest.TestCase):
 
     def test_empty_key(self):
         with self.assertRaises(KeyError):
-            assert self.store[""]
+            return self.store[""]
 
     def test_empty_store(self):
         store_file = mktemp()
