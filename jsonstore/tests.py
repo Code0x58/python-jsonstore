@@ -16,16 +16,16 @@ class TransactionBreaker(Exception):
 
 class Tests(unittest.TestCase):
     TEST_DATA = (
-        ('string', "hello"),
-        ('unicode', u"💩"),
-        ('integer', 1),
-        ('none', None),
-        ('big_integer', 18446744073709551616),
-        ('float', 1.0),
-        ('boolean', True),
-        ('list', [1, 2]),
-        ('tuple', (1, 2)),
-        ('dictionary', {'key': "value"}),
+        ("string", "hello"),
+        ("unicode", u"💩"),
+        ("integer", 1),
+        ("none", None),
+        ("big_integer", 18446744073709551616),
+        ("float", 1.0),
+        ("boolean", True),
+        ("list", [1, 2]),
+        ("tuple", (1, 2)),
+        ("dictionary", {"key": "value"}),
     )
 
     def setUp(self):
@@ -39,44 +39,52 @@ class Tests(unittest.TestCase):
         """
         Return a callable that assigns self.store.key to value
         """
+
         def handle():
             setattr(self.store, key, value)
+
         return handle
 
     def _setitem(self, key, value):
         """
         Return a callable that assigns self.store[key] to value
         """
+
         def handle():
             self.store[key] = value
+
         return handle
 
     def _getattr(self, key):
         """
         Return a callable that assigns self.store.key to value
         """
+
         def handle():
             return getattr(self.store, key)
+
         return handle
 
     def _getitem(self, key):
         """
         Return a callable that assigns self.store[key] to value
         """
+
         def handle():
             return self.store[key]
+
         return handle
 
     def test_new_store(self):
         store_file = mktemp()
         JsonStore(store_file, auto_commit=True)
         with open(self._store_file) as handle:
-            self.assertEqual(handle.read(), '{}')
+            self.assertEqual(handle.read(), "{}")
         os.remove(store_file)
 
         JsonStore(store_file, auto_commit=False)
         with open(self._store_file) as handle:
-            self.assertEqual(handle.read(), '{}')
+            self.assertEqual(handle.read(), "{}")
         os.remove(store_file)
 
     def test_assign_valid_types(self):
@@ -86,8 +94,10 @@ class Tests(unittest.TestCase):
 
     def test_assign_invalid_types(self):
         for method in (self._setattr, self._setitem):
+
             def assign(value):
-                return method('key', value)
+                return method("key", value)
+
             self.assertRaises(AttributeError, assign(set()))
             self.assertRaises(AttributeError, assign(object()))
             self.assertRaises(AttributeError, assign(None for i in range(2)))
@@ -107,15 +117,15 @@ class Tests(unittest.TestCase):
             self.store[name] = value
             self.assertTrue(name in self.store)
 
-        self.assertFalse('foo' in self.store)
+        self.assertFalse("foo" in self.store)
 
     def test_empty_key(self):
         with self.assertRaises(KeyError):
-            assert self.store['']
+            assert self.store[""]
 
     def test_empty_store(self):
         store_file = mktemp()
-        with open(store_file, 'wb') as f:
+        with open(store_file, "wb") as f:
             f.write(b"")
         self.assertTrue(JsonStore(f.name))
 
@@ -123,34 +133,34 @@ class Tests(unittest.TestCase):
         test_list = []
         test_dict = {}
         test_list.append(test_dict)
-        test_dict['list'] = test_list
+        test_dict["list"] = test_list
         for method in (self._setattr, self._setitem):
-            self.assertRaises(ValueError, method('key', test_list))
-            self.assertRaises(ValueError, method('key', test_dict))
+            self.assertRaises(ValueError, method("key", test_list))
+            self.assertRaises(ValueError, method("key", test_dict))
 
     def test_nested_dict_helper(self):
-        self.assertRaises(KeyError, self._setitem('dictionary.noexist', None))
-        self.assertRaises(KeyError, self._getitem('dictionary.noexist'))
+        self.assertRaises(KeyError, self._setitem("dictionary.noexist", None))
+        self.assertRaises(KeyError, self._getitem("dictionary.noexist"))
 
-        self.store.dictionary = {'a': 1}
-        self.store['dictionary.exist'] = None
-        self.assertIsNone(self.store.dictionary['exist'])
-        self.assertIsNone(self.store['dictionary.exist'])
+        self.store.dictionary = {"a": 1}
+        self.store["dictionary.exist"] = None
+        self.assertIsNone(self.store.dictionary["exist"])
+        self.assertIsNone(self.store["dictionary.exist"])
 
-        self.store['dictionary.a'] = 2
-        del self.store['dictionary.exist']
-        self.assertRaises(KeyError, self._getitem('dictionary.exist'))
-        self.assertNotIn('exist', self.store.dictionary)
-        self.assertEqual(self.store.dictionary, {'a': 2})
+        self.store["dictionary.a"] = 2
+        del self.store["dictionary.exist"]
+        self.assertRaises(KeyError, self._getitem("dictionary.exist"))
+        self.assertNotIn("exist", self.store.dictionary)
+        self.assertEqual(self.store.dictionary, {"a": 2})
 
     def test_del(self):
         self.store.key = None
         del self.store.key
-        self.assertRaises(KeyError, self._getitem('key'))
+        self.assertRaises(KeyError, self._getitem("key"))
 
         self.store.key = None
-        del self.store['key']
-        self.assertRaises(KeyError, self._getitem('key'))
+        del self.store["key"]
+        self.assertRaises(KeyError, self._getitem("key"))
 
     def test_context_and_deserialisation(self):
         store_file = mktemp()
@@ -166,30 +176,30 @@ class Tests(unittest.TestCase):
         inner_list = []
         outer_list = [inner_list]
         inner_dict = {}
-        outer_dict = {'key': inner_dict}
+        outer_dict = {"key": inner_dict}
 
         for method in (self._getattr, self._getitem):
             self.store.list = outer_list
-            self.assertIsNot(method('list')(), outer_list)
-            self.assertIsNot(method('list')()[0], inner_list)
+            self.assertIsNot(method("list")(), outer_list)
+            self.assertIsNot(method("list")()[0], inner_list)
 
             self.store.dict = outer_dict
-            self.assertIsNot(method('dict')(), outer_dict)
-            self.assertIsNot(method('dict')()['key'], inner_dict)
+            self.assertIsNot(method("dict")(), outer_dict)
+            self.assertIsNot(method("dict")()["key"], inner_dict)
 
-            self.assertIsNot(method('list')(), method('list')())
-            self.assertIsNot(method('list')()[0], method('list')()[0])
-            self.assertIsNot(method('dict')(), method('dict')())
-            self.assertIsNot(method('dict')()['key'], method('dict')()['key'])
+            self.assertIsNot(method("list")(), method("list")())
+            self.assertIsNot(method("list")()[0], method("list")()[0])
+            self.assertIsNot(method("dict")(), method("dict")())
+            self.assertIsNot(method("dict")()["key"], method("dict")()["key"])
 
     def test_load(self):
         for good_data in ("{}", '{"key": "value"}'):
-            with open(self._store_file, 'w') as handle:
+            with open(self._store_file, "w") as handle:
                 handle.write(good_data)
             self.store._load()
 
-        for bad_data in ('[]', '1', 'nill', '"x"'):
-            with open(self._store_file, 'w') as handle:
+        for bad_data in ("[]", "1", "nill", '"x"'):
+            with open(self._store_file, "w") as handle:
                 handle.write(bad_data)
             self.assertRaises(ValueError, self.store._load)
 
@@ -198,22 +208,16 @@ class Tests(unittest.TestCase):
         store = JsonStore(store_file, indent=None, auto_commit=True)
         store.value1 = 1
         with open(store_file) as handle:
-            self.assertEqual(
-                {'value1': 1},
-                json.load(handle),
-                )
-        store['value2'] = 2
+            self.assertEqual({"value1": 1}, json.load(handle))
+        store["value2"] = 2
         with open(store_file) as handle:
-            self.assertEqual(
-                {'value1': 1, 'value2': 2},
-                json.load(handle),
-                )
+            self.assertEqual({"value1": 1, "value2": 2}, json.load(handle))
 
     def test_no_auto_commit(self):
         store_file = mktemp()
         store = JsonStore(store_file, indent=None, auto_commit=False)
         store.value1 = 1
-        store['value2'] = 2
+        store["value2"] = 2
         with open(store_file) as handle:
             self.assertEqual({}, json.load(handle))
 
@@ -241,20 +245,20 @@ class Tests(unittest.TestCase):
             self.store.value = 2
             del self.store.remove_me
         self.assertEqual(self.store.value, 2)
-        self.assertRaises(KeyError, self._getattr('remove_me'))
+        self.assertRaises(KeyError, self._getattr("remove_me"))
 
     def test_transaction_write(self):
         with self.store:
             self.store.value1 = 1
             with open(self._store_file) as handle:
-                self.assertEqual(handle.read(), '{}')
+                self.assertEqual(handle.read(), "{}")
             with self.store:
                 self.store.value2 = 2
             with open(self._store_file) as handle:
-                self.assertEqual(handle.read(), '{}')
+                self.assertEqual(handle.read(), "{}")
         with open(self._store_file) as handle:
             self.assertEqual(handle.read(), '{"value1": 1, "value2": 2}')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
