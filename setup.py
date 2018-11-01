@@ -20,9 +20,8 @@ setup(
     classifiers=dedent("""
         Development Status :: 5 - Production/Stable
         Intended Audience :: Developers
-        Topic :: Database
-        Topic :: Software Development
         License :: OSI Approved :: MIT License
+        Operating System :: OS Independent
         Programming Language :: Python :: 2
         Programming Language :: Python :: 2.7
         Programming Language :: Python :: 3
@@ -33,6 +32,8 @@ setup(
         Programming Language :: Python :: 3.7
         Programming Language :: Python :: Implementation :: CPython
         Programming Language :: Python :: Implementation :: PyPy
+        Topic :: Database
+        Topic :: Software Development
     """).strip().split('\n'),
     keywords='json key value store',
     url='https://github.com/Code0x58/python-jsonstore/',
