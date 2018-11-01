@@ -41,8 +41,12 @@ Basics
     # the key is split on '.'s and works on dictionaries
     del store['a_dictionary.dict-list']
     store['a_dictionary.new_value'] = "old value"
+    #  you can also use the syntactic sugar for tuple keys (explicit lists work too)
     assert store['a_dictionary', 'new_value'] == "old value"
-    assert store['a_list', 1] == 2
+    # you can traverse lists too
+    assert store['a_list', -1] == 3
+    # you can use slices in lists
+    assert len(store['a_list', 1:]) == 2
 
     # deep copies are made when assigning values
     my_list = ['fun']

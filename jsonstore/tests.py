@@ -170,12 +170,13 @@ class Tests(unittest.TestCase):
     def test_nested_getitem(self):
         self.store["list"] = [
             {
-                "key": [None, "value"]
+                "key": [None, "value", "last"]
             }
         ]
         assert self.store["list", 0, "key", 1] == "value"
-        assert self.store[["list", 0, "key", 1]] == "value"
+        assert self.store[["list", 0, "key", -1]] == "last"
         self.assertRaises(TypeError, self._getitem("list.0.key.1"))
+        assert len(self.store["list", 0, "key", 1:]) == 2
 
     def test_del(self):
         self.store.key = None
