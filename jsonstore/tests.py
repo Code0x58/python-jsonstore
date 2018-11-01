@@ -88,9 +88,22 @@ class Tests(unittest.TestCase):
         os.remove(store_file)
 
     def test_assign_valid_types(self):
-        for method in (self._setattr, self._setitem):
-            for name, value in self.TEST_DATA:
-                method(name, value)
+        for name, value in self.TEST_DATA:
+            self.store[name] = value
+            self.store[name] == value
+            getattr(self.store, name) == value
+
+            del self.store[name]
+            self.assertRaises(KeyError, self._getitem(name))
+            self.assertRaises(AttributeError, self._getattr(name))
+
+            setattr(self.store, name, value)
+            self.store[name] == value
+            getattr(self.store, name) == value
+
+            delattr(self.store, name)
+            self.assertRaises(KeyError, self._getitem(name))
+            self.assertRaises(AttributeError, self._getattr(name))
 
     def test_assign_invalid_types(self):
         for method in (self._setattr, self._setitem):
@@ -142,16 +155,27 @@ class Tests(unittest.TestCase):
         self.assertRaises(KeyError, self._setitem("dictionary.noexist", None))
         self.assertRaises(KeyError, self._getitem("dictionary.noexist"))
 
-        self.store.dictionary = {"a": 1}
-        self.store["dictionary.exist"] = None
-        self.assertIsNone(self.store.dictionary["exist"])
-        self.assertIsNone(self.store["dictionary.exist"])
+        for access_key in ("dictionary.exist", ("dictionary", "exist"), ["dictionary", "exist"]):
+            self.store.dictionary = {"a": 1}
+            self.store["dictionary.exist"] = None
+            self.assertIsNone(self.store.dictionary["exist"])
+            self.assertIsNone(self.store[access_key])
 
-        self.store["dictionary.a"] = 2
-        del self.store["dictionary.exist"]
-        self.assertRaises(KeyError, self._getitem("dictionary.exist"))
-        self.assertNotIn("exist", self.store.dictionary)
-        self.assertEqual(self.store.dictionary, {"a": 2})
+            self.store["dictionary.a"] = 2
+            del self.store[access_key]
+            self.assertRaises(KeyError, self._getitem(access_key))
+            self.assertNotIn("exist", self.store.dictionary)
+            self.assertEqual(self.store.dictionary, {"a": 2})
+
+    def test_nested_getitem(self):
+        self.store["list"] = [
+            {
+                "key": [None, "value"]
+            }
+        ]
+        assert self.store["list", 0, "key", 1] == "value"
+        assert self.store[["list", 0, "key", 1]] == "value"
+        self.assertRaises(TypeError, self._getitem("list.0.key.1"))
 
     def test_del(self):
         self.store.key = None
@@ -245,7 +269,7 @@ class Tests(unittest.TestCase):
             self.store.value = 2
             del self.store.remove_me
         self.assertEqual(self.store.value, 2)
-        self.assertRaises(KeyError, self._getattr("remove_me"))
+        self.assertRaises(AttributeError, self._getattr("remove_me"))
 
     def test_transaction_write(self):
         with self.store:

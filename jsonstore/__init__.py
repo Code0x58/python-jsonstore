@@ -71,7 +71,7 @@ class JsonStore(object):
         if key in self._data:
             return deepcopy(self._data[key])
         else:
-            raise KeyError(key)
+            raise AttributeError(key)
 
     @classmethod
     def _valid_object(cls, obj, parents=None):
@@ -127,7 +127,10 @@ class JsonStore(object):
         """
         Returns the object which is under the given path
         """
-        steps = full_path.split(".")
+        if isinstance(full_path, (tuple, list)):
+            steps = full_path
+        else:
+            steps = full_path.split(".")
         path = []
         obj = self._data
         if not full_path:
@@ -156,7 +159,11 @@ class JsonStore(object):
         return deepcopy(obj)
 
     def __delitem__(self, name):
-        path, _, key = name.rpartition(".")
+        if isinstance(name, (tuple, list)):
+            path = name[:-1]
+            key = name[-1]
+        else:
+            path, _, key = name.rpartition(".")
         obj = self.__get_obj(path)
         del obj[key]
 

@@ -41,6 +41,8 @@ Basics
     # the key is split on '.'s and works on dictionaries
     del store['a_dictionary.dict-list']
     store['a_dictionary.new_value'] = "old value"
+    assert store['a_dictionary', 'new_value'] == "old value"
+    assert store['a_list', 1] == 2
 
     # deep copies are made when assigning values
     my_list = ['fun']
