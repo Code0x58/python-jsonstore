@@ -14,6 +14,7 @@ setup(
     use_scm_version=True,
     description="",
     long_description=long_description,
+    long_description_content_type='text/markdown',
     author="Oliver Bristow",
     author_email='github+pypi@oliverbristow.co.uk',
     license='MIT',
@@ -39,7 +40,6 @@ setup(
     url='https://github.com/Code0x58/python-jsonstore/',
     py_modules=dedent("""
         jsonstore
-        jsonstore.tests
     """).strip().split('\n'),
     setup_requires=["setuptools_scm", "wheel"],
 )
