@@ -14,7 +14,7 @@ setup(
     use_scm_version=True,
     description="",
     long_description=long_description,
-    long_description_content_type='text/markdown',
+    long_description_content_type='text/x-rst',
     author="Oliver Bristow",
     author_email='github+pypi@oliverbristow.co.uk',
     license='MIT',
