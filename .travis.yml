@@ -1,13 +1,26 @@
 language: python
-python:
-  - "2.7"
-  - "3.3"
-  - "3.4"
-  - "3.5"
-  - "3.6"
-  - "3.7-dev"
-  - "pypy"
-  - "pypy3"
-install:
-  - pip install .
-script: py.test
+
+jobs:
+  include:
+    - python: 3.8
+    - python: 3.7
+    - python: 3.6
+    - python: 3.5
+    - python: 3.4
+    - python: 2.7
+    - python: pypy3
+    - python: pypy
+    - name: "Python: 3.7"
+      os: osx
+      osx_image: xcode11.2  # Python 3.7.4 running on macOS 10.14.4
+      language: shell       # 'language: python' is an error on Travis CI macOS
+    - name: "Python: 3.8"
+      os: windows           # Windows 10.0.17134 N/A Build 17134
+      language: shell       # 'language: python' is an error on Travis CI Windows
+      before_install:
+        - choco install python --version 3.8.2
+        - python -m pip install --upgrade pip
+      env: PATH=/c/Python38:/c/Python38/Scripts:$PATH
+
+install: python -m pip install . pytest
+script: python -m pytest
