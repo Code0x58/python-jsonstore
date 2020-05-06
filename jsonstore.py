@@ -53,8 +53,14 @@ class JsonStore(object):
         with open(temp, "wb") as store:
             output = json.dumps(self._data, indent=self._indent)
             store.write(output.encode("utf-8"))
-        os.remove(self._path)
-        os.rename(temp, self._path)
+        
+        if sys.version_info >= (3, 3):
+            os.replace(temp, self._path)
+        elif os.name == "windows":
+            os.remove(self._path)
+            os.rename(temp, self._path)
+        else:
+            os.rename(temp, self._path)
 
     def __init__(self, path, indent=2, auto_commit=True):
         self.__dict__.update(
