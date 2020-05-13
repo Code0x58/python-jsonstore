@@ -151,6 +151,9 @@ class JsonStore(object):
         return obj
 
     def __setitem__(self, name, value):
+        if type(name) is not str:
+            raise TypeError("Key must be of type 'str' but '%s' was given" % name.__class__.__name__)
+
         path, _, key = name.rpartition(".")
         if self._valid_object(value):
             dictionary = self.__get_obj(path)
