@@ -1,4 +1,4 @@
-|PyPi Package| |Build Status| |Codacy Rating|
+|PyPi Package| |Build Status| |Codacy Rating| |Coverage Report|
 
 jsonstore
 =========
@@ -47,6 +47,8 @@ Basics
     assert store['a_list', -1] == 3
     # you can use slices in lists
     assert len(store['a_list', 1:]) == 2
+    del store['a_list', :2]
+    assert store.a_list == [3]
 
     # deep copies are made when assigning values
     my_list = ['fun']
@@ -95,3 +97,5 @@ file until all of the transactions have been closed.
    :target: https://www.codacy.com/app/evilumbrella-github/python-jsonstore?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Code0x58/python-jsonstore&amp;utm_campaign=Badge_Grade
 .. |PyPi Package| image:: https://badge.fury.io/py/python-jsonstore.svg
    :target: https://pypi.org/project/python-jsonstore/
+.. |Coverage Report| image:: https://codecov.io/gh/Code0x58/python-jsonstore/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/Code0x58/python-jsonstore

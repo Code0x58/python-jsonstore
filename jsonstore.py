@@ -12,6 +12,13 @@ from copy import deepcopy
 
 __all__ = ["JsonStore"]
 
+STRING_TYPES = (str,)
+INT_TYPES = (int,)
+if sys.version_info < (3,):
+    STRING_TYPES += (unicode,)
+    INT_TYPES += (long,)
+VALUE_TYPES = (bool, int, float, type(None)) + INT_TYPES
+
 
 class JsonStore(object):
     """A class to provide object based access to a JSON file"""
@@ -81,9 +88,10 @@ class JsonStore(object):
             raise AttributeError(key)
 
     @classmethod
-    def _valid_object(cls, obj, parents=None):
+    def _verify_object(cls, obj, parents=None):
         """
-        Determine if the object can be encoded into JSON
+        Raise an exception if the object is not suitable for assignment.
+
         """
         # pylint: disable=unicode-builtin,long-builtin
         if isinstance(obj, (dict, list)):
@@ -94,85 +102,100 @@ class JsonStore(object):
             parents.append(obj)
 
         if isinstance(obj, dict):
-            return all(
-                cls._valid_string(k) and cls._valid_object(v, parents)
-                for k, v in obj.items()
-            )
+            for k, v in obj.items():
+                if not cls._valid_string(k):
+                    # this is necessary because of the JSON serialisation
+                    raise TypeError("a dict has non-string keys")
+                cls._verify_object(v, parents)
         elif isinstance(obj, (list, tuple)):
-            return all(cls._valid_object(o, parents) for o in obj)
+            for o in obj:
+                cls._verify_object(o, parents)
         else:
             return cls._valid_value(obj)
 
     @classmethod
     def _valid_value(cls, value):
-        if isinstance(value, (bool, int, float, type(None))):
-            return True
-        elif sys.version_info < (3,) and isinstance(value, long):
+        if isinstance(value, VALUE_TYPES):
             return True
         else:
             return cls._valid_string(value)
 
     @classmethod
     def _valid_string(cls, value):
-        if isinstance(value, str):
+        if isinstance(value, STRING_TYPES):
             return True
-        elif sys.version_info < (3,):
-            return isinstance(value, unicode)
         else:
             return False
 
-    def __setattr__(self, key, value):
-        if not self._valid_object(value):
-            raise AttributeError
-        self._data[key] = deepcopy(value)
+    @classmethod
+    def _canonical_key(cls, key):
+        """Convert a set/get/del key into the canonical form."""
+        if cls._valid_string(key):
+            return tuple(key.split("."))
+
+        if isinstance(key, (tuple, list)):
+            key = tuple(key)
+            if not key:
+                raise TypeError("key must be a string or non-empty tuple/list")
+            return key
+
+        raise TypeError("key must be a string or non-empty tuple/list")
+
+    def __setattr__(self, attr, value):
+        self._verify_object(value)
+        self._data[attr] = deepcopy(value)
         self._do_auto_commit()
 
-    def __delattr__(self, key):
-        del self._data[key]
+    def __delattr__(self, attr):
+        del self._data[attr]
 
-    def __get_obj(self, full_path):
-        """
-        Returns the object which is under the given path
-        """
-        if isinstance(full_path, (tuple, list)):
-            steps = full_path
-        else:
-            steps = full_path.split(".")
+    def __get_obj(self, steps):
+        """Returns the object which is under the given path."""
         path = []
         obj = self._data
-        if not full_path:
-            return obj
         for step in steps:
-            path.append(step)
+            if isinstance(obj, dict) and not self._valid_string(step):
+                # this is necessary because of the JSON serialisation
+                raise TypeError("%s is a dict and %s is not a string" % (path, step))
             try:
                 obj = obj[step]
-            except KeyError:
-                raise KeyError(".".join(path))
+            except (KeyError, IndexError, TypeError) as e:
+                raise type(e)("unable to get %s from %s: %s" % (step, path, e))
+            path.append(step)
         return obj
 
-    def __setitem__(self, name, value):
-        path, _, key = name.rpartition(".")
-        if self._valid_object(value):
-            dictionary = self.__get_obj(path)
-            dictionary[key] = deepcopy(value)
-            self._do_auto_commit()
-        else:
-            raise AttributeError
+    def __setitem__(self, key, value):
+        steps = self._canonical_key(key)
+        path, step = steps[:-1], steps[-1]
+        self._verify_object(value)
+        container = self.__get_obj(path)
+        if isinstance(container, dict) and not self._valid_string(step):
+            raise TypeError("%s is a dict and %s is not a string" % (path, step))
+        try:
+            container[step] = deepcopy(value)
+        except (IndexError, TypeError) as e:
+            raise type(e)("unable to set %s from %s: %s" % (step, path, e))
+        self._do_auto_commit()
 
     def __getitem__(self, key):
-        obj = self.__get_obj(key)
-        if obj is self._data:
-            raise KeyError
+        steps = self._canonical_key(key)
+        obj = self.__get_obj(steps)
         return deepcopy(obj)
 
-    def __delitem__(self, name):
-        if isinstance(name, (tuple, list)):
-            path = name[:-1]
-            key = name[-1]
-        else:
-            path, _, key = name.rpartition(".")
+    def __delitem__(self, key):
+        steps = self._canonical_key(key)
+        path, step = steps[:-1], steps[-1]
         obj = self.__get_obj(path)
-        del obj[key]
+        try:
+            del obj[step]
+        except (KeyError, IndexError, TypeError) as e:
+            raise type(e)("unable to delete %s from %s: %s" % (step, path, e))
 
     def __contains__(self, key):
-        return key in self._data
+        steps = self._canonical_key(key)
+        try:
+            self.__get_obj(steps)
+            return True
+        except (KeyError, IndexError, TypeError):
+            # this is rather permissive as the types are dynamic
+            return False
