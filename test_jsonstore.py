@@ -284,6 +284,18 @@ class Tests(unittest.TestCase):
         with open(self._store_file) as handle:
             self.assertEqual(handle.read(), '{"value1": 1, "value2": 2}')
 
+    def test_list_concat_inplace(self):
+        self.store.list = []
+        extension = [{"key": "value"}]
+
+        # make sure += happens
+        self.store["list"] += extension
+        self.store.list += extension
+        self.assertEqual(self.store.list, extension * 2)
+
+        # make sure a deepcopy occurred
+        self.assertIsNot(self.store.list[0], extension[0])
+
 
 if __name__ == "__main__":
     unittest.main()
