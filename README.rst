@@ -59,6 +59,25 @@ Basics
     assert store.a_dictionary['new_value'] == "old value"
     assert store.a_dictionary is not store.a_dictionary
 
+    # Appending to, extending a list
+    >>> store.list = [1, 2, 3]
+
+    # Because of the fact that .append won't modify the list in the actual file,
+    # but only a copy...
+    >>> store.list.append(4)
+    >>> store.list
+    [1, 2, 3]
+
+    # ... we need to rather use the += operator to append to a list.
+    >>> store.list += [4]
+    >>> store.list
+    [1, 2, 3, 4]
+
+    # Similarly, we can extend the list
+    >>> store.list += [5, 6]
+    >>> store.list
+    [1, 2, 3, 4, 5, 6]
+
 Transactions
 ~~~~~~~~~~~~
 
