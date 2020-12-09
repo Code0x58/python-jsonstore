@@ -2,6 +2,7 @@ language: python
 
 jobs:
   include:
+    - python: 3.9
     - python: 3.8
     - python: 3.7
     - python: 3.6
@@ -10,7 +11,7 @@ jobs:
     - python: 2.7
     - python: pypy3
     - python: pypy
-    - name: "Python: 3.7"
+    - name: "Python: 2.7"
       os: osx
       osx_image: xcode11.2  # Python 3.7.4 running on macOS 10.14.4
       language: shell       # 'language: python' is an error on Travis CI macOS
@@ -22,5 +23,7 @@ jobs:
         - python -m pip install --upgrade pip
       env: PATH=/c/Python38:/c/Python38/Scripts:$PATH
 
-install: python -m pip install . pytest
-script: python -m pytest
+install: python -m pip install --upgrade . pytest==4.6.1 pytest-cov==2.8.1 codecov==2.1.10
+script: python -m pytest -vv --cov=jsonstore --cov-append
+after_success:
+  - codecov

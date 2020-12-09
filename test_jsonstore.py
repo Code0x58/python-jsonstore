@@ -105,19 +105,39 @@ class Tests(unittest.TestCase):
             self.assertRaises(KeyError, self._getitem(name))
             self.assertRaises(AttributeError, self._getattr(name))
 
+    def test_slices(self):
+        self.store.list = [1, 2, 3]
+        self.store["list", :2] = ["a", "b"]
+        self.assertEqual(self.store["list", 1:], ["b", 3])
+        del self.store["list", :1]
+        self.assertEqual(self.store.list, ["b", 3])
+
     def test_assign_invalid_types(self):
         for method in (self._setattr, self._setitem):
 
             def assign(value):
                 return method("key", value)
 
-            self.assertRaises(AttributeError, assign(set()))
-            self.assertRaises(AttributeError, assign(object()))
-            self.assertRaises(AttributeError, assign(None for i in range(2)))
+            self.assertRaises(TypeError, assign(set()))
+            self.assertRaises(TypeError, assign(object()))
+            self.assertRaises(TypeError, assign(None for i in range(2)))
+            self.assertRaises(TypeError, assign({1: 1}))
 
     def test_assign_bad_keys(self):
-        # FIXME: a ValueError would make more sense
-        self.assertRaises(AttributeError, self._setitem(1, 2))
+        value = 1
+        # the root object is a dict, so a string key is needed
+        self.assertRaises(TypeError, self._setitem(1, value))
+        self.assertRaises(TypeError, self._setitem((1, "a"), value))
+
+        self.store["dict"] = {}
+        self.store["list"] = []
+        self.assertRaises(TypeError, self._setitem((), value))
+        self.assertRaises(TypeError, self._setitem(("dict", 1), value))
+        self.assertRaises(TypeError, self._setitem(("dict", slice(1)), value))
+        self.assertRaises(TypeError, self._setitem(("list", "a"), value))
+        self.assertRaises(TypeError, self._setitem(("list", slice("a")), value))
+        self.assertRaises(IndexError, self._setitem(("list", 1), value))
+
 
     def test_retrieve_values(self):
         for name, value in self.TEST_DATA:
@@ -177,6 +197,7 @@ class Tests(unittest.TestCase):
         assert self.store[["list", 0, "key", -1]] == "last"
         self.assertRaises(TypeError, self._getitem("list.0.key.1"))
         assert len(self.store["list", 0, "key", 1:]) == 2
+        self.assertRaises(IndexError, self._getitem(("list", 1)))
 
     def test_del(self):
         self.store.key = None
@@ -186,6 +207,17 @@ class Tests(unittest.TestCase):
         self.store.key = None
         del self.store["key"]
         self.assertRaises(KeyError, self._getitem("key"))
+
+        with self.assertRaises(KeyError):
+            del self.store["missing"]
+
+        self.store.list = []
+        with self.assertRaises(IndexError):
+            del self.store["list", 1]
+
+        self.store.dict = {}
+        with self.assertRaises(TypeError):
+            del self.store["dict", slice("a")]
 
     def test_context_and_deserialisation(self):
         store_file = mktemp()
