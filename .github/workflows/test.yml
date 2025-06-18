@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        # the range of versions covered is much less than those claimed to be supported, just
+        # because it would take getting hands on for CI to cover the old versions that Travis
+        # previously covered, back when those versions were contemporary.
+        python-version: ["3.7", "3.13", "3.14-dev"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install . pytest pytest-cov
+      - name: Run tests
+        run: |
+          pytest -vv --cov=jsonstore
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: .coverage

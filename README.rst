@@ -1,4 +1,4 @@
-|PyPi Package| |Build Status| |Codacy Rating| |Coverage Report|
+|PyPi Package|
 
 jsonstore
 =========
@@ -12,11 +12,8 @@ flexible than the
 `configparser <https://docs.python.org/3/library/configparser.html>`__
 module which is included with Python.
 
-This works is tested and working on Python 2.7+ and Python 3.3+. It will
-not work on 2.6 or lower, but is expected to work on 3.0-3.2. The tests
-do not work in 3.2.6 due to
-`mistreating <https://travis-ci.org/Code0x58/python-jsonstore/jobs/198150401>`__
-the 💩 when parsing the test code. This is also tested on pypy and pypy3.
+This works is tested and working on Python 2.7 and Python 3.6+. It will
+not work on 2.6 or lower. The tests are also executed on PyPy.
 
 Examples
 --------
@@ -110,11 +107,6 @@ file until all of the transactions have been closed.
     # here we see the value that was saved previously
     assert store.value == 1
 
-.. |Build Status| image:: https://travis-ci.org/Code0x58/python-jsonstore.svg?branch=master
-   :target: https://travis-ci.org/Code0x58/python-jsonstore
-.. |Codacy Rating| image:: https://api.codacy.com/project/badge/Grade/37ea488773444de59469a3775be83faf
-   :target: https://www.codacy.com/app/evilumbrella-github/python-jsonstore?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Code0x58/python-jsonstore&amp;utm_campaign=Badge_Grade
+
 .. |PyPi Package| image:: https://badge.fury.io/py/python-jsonstore.svg
    :target: https://pypi.org/project/python-jsonstore/
-.. |Coverage Report| image:: https://codecov.io/gh/Code0x58/python-jsonstore/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/Code0x58/python-jsonstore
