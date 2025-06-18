@@ -216,7 +216,8 @@ class Tests(unittest.TestCase):
             del self.store["list", 1]
 
         self.store.dict = {}
-        with self.assertRaises(TypeError):
+        # somewhere after python 3.9 this went from a TypeError to a KeyError
+        with self.assertRaises((TypeError, KeyError)):
             del self.store["dict", slice("a")]
 
     def test_context_and_deserialisation(self):
