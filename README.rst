@@ -1,4 +1,4 @@
-|Build Status| |PyPi Package|
+|PyPI| |Build Status| |Coverage Report|
 
 jsonstore
 =========
@@ -110,5 +110,7 @@ file until all of the transactions have been closed.
 
 .. |Build Status| image:: https://github.com/Code0x58/python-jsonstore/actions/workflows/ci.yml/badge.svg
    :target: https://github.com/Code0x58/python-jsonstore/actions/workflows/ci.yml
-.. |PyPi Package| image:: https://badge.fury.io/py/python-jsonstore.svg
+.. |PyPI| image:: https://img.shields.io/pypi/v/python-jsonstore.svg
    :target: https://pypi.org/project/python-jsonstore/
+.. |Coverage Report| image:: https://codecov.io/gh/Code0x58/python-jsonstore/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/Code0x58/python-jsonstore
