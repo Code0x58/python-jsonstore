@@ -1,4 +1,4 @@
-|PyPi Package|
+|Build Status| |PyPi Package|
 
 jsonstore
 =========
@@ -108,5 +108,7 @@ file until all of the transactions have been closed.
     assert store.value == 1
 
 
+.. |Build Status| image:: https://github.com/Code0x58/python-jsonstore/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/Code0x58/python-jsonstore/actions/workflows/ci.yml
 .. |PyPi Package| image:: https://badge.fury.io/py/python-jsonstore.svg
    :target: https://pypi.org/project/python-jsonstore/
