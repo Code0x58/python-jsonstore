@@ -12,8 +12,7 @@ flexible than the
 `configparser <https://docs.python.org/3/library/configparser.html>`__
 module which is included with Python.
 
-This works is tested and working on Python 2.7 and Python 3.6+. It will
-not work on 2.6 or lower. The tests are also executed on PyPy.
+Requires Python 3.9 or newer. Tests run on CPython 3.9–3.15 and PyPy 3.11.
 
 Examples
 --------
