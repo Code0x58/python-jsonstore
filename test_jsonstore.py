@@ -5,7 +5,9 @@ from __future__ import absolute_import
 import json
 import os
 import unittest
+from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from jsonstore import JsonStore
 
@@ -309,6 +311,56 @@ class Tests(unittest.TestCase):
         store["value2"] = 2
         with open(store_file) as handle:
             self.assertEqual({}, json.load(handle))
+
+    def test_save_preserves_unrelated_backup(self):
+        backup = Path(self._store_file + "~")
+        backup.write_text("unrelated backup", encoding="utf-8")
+        self.store.value = 1
+        self.assertEqual(backup.read_text(encoding="utf-8"), "unrelated backup")
+        self.assertEqual(JsonStore(self._store_file).value, 1)
+
+    @unittest.skipIf(os.name == "nt", "Creating symlinks requires Windows privileges")
+    def test_save_does_not_follow_backup_symlink(self):
+        unrelated = Path(self._directory.name, "unrelated.txt")
+        unrelated.write_text("unrelated content", encoding="utf-8")
+        backup = Path(self._store_file + "~")
+        backup.symlink_to(unrelated)
+        self.store.value = 1
+        self.assertTrue(backup.is_symlink())
+        self.assertEqual(unrelated.read_text(encoding="utf-8"), "unrelated content")
+
+    def test_overlapping_saves_use_separate_temporary_files(self):
+        first = JsonStore(self._store_file, auto_commit=False)
+        second = JsonStore(self._store_file, auto_commit=False)
+        first.value = "first writer"
+        second.value = "second writer"
+        replace = os.replace
+        sources = []
+
+        def interleave(source, destination):
+            sources.append(source)
+            if len(sources) == 1:
+                second._save()
+                self.assertEqual(JsonStore(self._store_file).value, "second writer")
+            replace(source, destination)
+
+        with patch("jsonstore.os.replace", side_effect=interleave):
+            first._save()
+        self.assertEqual(len(set(sources)), 2)
+        self.assertEqual(JsonStore(self._store_file).value, "first writer")
+
+    def test_failed_replacement_removes_temporary_file(self):
+        before = set(os.listdir(self._directory.name))
+        with patch("jsonstore.os.replace", side_effect=OSError("replacement failed")):
+            with self.assertRaises(OSError):
+                self.store.value = 1
+        self.assertEqual(set(os.listdir(self._directory.name)), before)
+        self.assertNotIn("value", JsonStore(self._store_file))
+
+    def test_pathlike_store_can_be_saved(self):
+        store = JsonStore(Path(self._store_file))
+        store.value = 1
+        self.assertEqual(JsonStore(self._store_file).value, 1)
 
     def test_transaction_rollback(self):
         self.store.value = 1
