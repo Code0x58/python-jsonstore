@@ -219,6 +219,38 @@ class Tests(unittest.TestCase):
         with self.assertRaises((TypeError, KeyError)):
             del self.store["dict", slice("a")]
 
+    def test_deletions_are_auto_committed(self):
+        cases = (
+            (lambda store: delattr(store, "value"), {}),
+            (lambda store: store.__delitem__("value"), {}),
+            (lambda store: store.__delitem__("value.key"),
+             {"value": {"items": [1, 2, 3]}}),
+            (lambda store: store.__delitem__(("value", "items", 1)),
+             {"value": {"key": 1, "items": [1, 3]}}),
+            (lambda store: store.__delitem__(("value", "items", slice(0, 2))),
+             {"value": {"key": 1, "items": [3]}}),
+        )
+        for index, (delete, expected) in enumerate(cases):
+            with self.subTest(case=index):
+                self.store.value = {"key": 1, "items": [1, 2, 3]}
+                delete(self.store)
+                with open(self._store_file) as handle:
+                    self.assertEqual(json.load(handle), expected)
+                self.assertEqual(JsonStore(self._store_file)._data, expected)
+
+    def test_deletion_respects_deferred_commits(self):
+        self.store.key = 1
+        with self.store:
+            del self.store.key
+            self.assertEqual(JsonStore(self._store_file).key, 1)
+        self.assertNotIn("key", JsonStore(self._store_file))
+
+        self.store.key = 1
+        store = JsonStore(self._store_file, auto_commit=False)
+        del store["key"]
+        self.assertNotIn("key", store)
+        self.assertEqual(JsonStore(self._store_file).key, 1)
+
     def test_context_and_deserialisation(self):
         store_file = os.path.join(self._directory.name, "roundtrip.json")
         for name, value in self.TEST_DATA:
