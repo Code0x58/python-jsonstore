@@ -3,109 +3,90 @@
 jsonstore
 =========
 
-This module provides a class that maps keys and values from a JSON file
-onto its attributes.
-
-The goal was to provide a convenient way of loading and saving
-configuration in a familiar human readable format. This is a bit more
-flexible than the
-`configparser <https://docs.python.org/3/library/configparser.html>`__
-module which is included with Python.
+``JsonStore`` maps a JSON object's keys to Python attributes. Use it to
+load and save configuration containing nested dictionaries and lists.
 
 Requires Python 3.9 or newer. Tests run on CPython 3.9–3.15 and PyPy 3.11.
 
 Examples
 --------
 
+Install with ``pip install python-jsonstore``.
+
 Basics
 ~~~~~~
 
 .. code:: python
 
-    # by default JsonStore commits on every change unless in a transaction
-    store = JsonStore('config.json')
-    store.a_string = "something"
-    store.a_list = [1, 2, 3]
-    store.a_dictionary = {
-      'dict-list': [{}],
-      'ln(2)': 0.69314718056,
-      'for-you': u"💐",
-    }
+    from jsonstore import JsonStore
 
-    # you can use […] to set/get/delete string keys
-    store['some_key'] = "a value"
-    # the key is split on '.'s and works on dictionaries
-    del store['a_dictionary.dict-list']
-    store['a_dictionary.new_value'] = "old value"
-    #  you can also use the syntactic sugar for tuple keys (explicit lists work too)
-    assert store['a_dictionary', 'new_value'] == "old value"
-    # you can traverse lists too
-    assert store['a_list', -1] == 3
-    # you can use slices in lists
-    assert len(store['a_list', 1:]) == 2
-    del store['a_list', :2]
-    assert store.a_list == [3]
+    # Assignments and deletions are saved automatically.
+    store = JsonStore("config.json")
+    store.message = "hello"
+    store.options = {"enabled": True, "greeting": "💐"}
+    store.numbers = [1, 2, 3]
+    assert "message" in store
+    del store.message
 
-    # deep copies are made when assigning values
-    my_list = ['fun']
-    store.a_list = my_list
-    assert store.a_list is not my_list
-    assert 'a_list' in store
+    # Dot-separated keys traverse dictionaries.
+    store["options.enabled"] = False
+    assert store["options", "enabled"] is False
 
-    # deep copies are also returned to avoid unsanitary changes being made
-    store.a_dictionary['new_value'] = "new value"  # won't update the store!
-    assert store.a_dictionary['new_value'] == "old value"
-    assert store.a_dictionary is not store.a_dictionary
+    # Tuple or list paths also accept list indices and slices.
+    assert store["numbers", -1] == 3
+    assert store[["numbers", 1]] == 2
+    del store["numbers", :2]
+    assert store.numbers == [3]
 
-    # Appending to, extending a list
-    >>> store.list = [1, 2, 3]
+    # A one-element tuple addresses a literal key containing a dot.
+    store[("literal.key",)] = "value"
 
-    # Because of the fact that .append won't modify the list in the actual file,
-    # but only a copy...
-    >>> store.list.append(4)
-    >>> store.list
-    [1, 2, 3]
+Reads and assignments use deep copies. To update a stored collection,
+assign the modified value back; ``+=`` also does this:
 
-    # ... we need to rather use the += operator to append to a list.
-    >>> store.list += [4]
-    >>> store.list
-    [1, 2, 3, 4]
+.. code:: python
 
-    # Similarly, we can extend the list
-    >>> store.list += [5, 6]
-    >>> store.list
-    [1, 2, 3, 4, 5, 6]
+    store.numbers.append(4)
+    assert store.numbers == [3]
+    store.numbers += [4, 5]
+    assert store.numbers == [3, 4, 5]
+
+Use item access for keys that conflict with ``JsonStore`` attributes.
+``indent`` controls JSON formatting and defaults to 2; use ``None`` for
+compact output. ``auto_commit=False`` defers saving until a transaction
+commits.
 
 Transactions
 ~~~~~~~~~~~~
 
-``JsonStore`` objects can be used as `context
-managers <https://www.python.org/dev/peps/pep-0343/>`__ to provide
-transactions which are rolled back in the event of an exception. The
-transaction model is primitive; you can only nest transactions.
-
-While a store is put into a transaction, it will not save changes to
-file until all of the transactions have been closed.
+Use ``with store:`` to group changes into a transaction. Transactions may
+be nested; only successful exit from the outermost transaction saves the
+file. An exception in a transaction restores its previous state, including
+when saving fails.
 
 .. code:: python
 
     from jsonstore import JsonStore
 
-    # even with auto_commit=True, the file won't be saved until the last contexts has been closed
-    with JsonStore('config.json', indent=None, auto_commit=False) as store:
-      self.value = 1
+    with JsonStore("config.json", indent=None, auto_commit=False) as store:
+        store.value = 1
+    assert JsonStore("config.json").value == 1
 
-    # the context manager will roll back changes made if an exception is raised
-    store = JsonStore('config.json', indent=None)
     try:
-      with store:
-        store.value = "new"
-        raise Exception
-    except Exception:
-      pass
-    # here we see the value that was saved previously
+        with store:
+            store.value = 2
+            with store:
+                store.value = 3
+            raise ValueError("cancel the transaction")
+    except ValueError:
+        pass
     assert store.value == 1
+    assert JsonStore("config.json").value == 1
 
+Transactions provide in-memory rollback, with no locking or coordination
+between writers. Use one writer per file; separate stores do not reload
+each other's changes. Atomic replacement does not guarantee durability
+across a power failure.
 
 .. |Build Status| image:: https://github.com/Code0x58/python-jsonstore/actions/workflows/ci.yml/badge.svg
    :target: https://github.com/Code0x58/python-jsonstore/actions/workflows/ci.yml
