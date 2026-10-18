@@ -125,6 +125,64 @@ class Tests(unittest.TestCase):
             self.assertRaises(TypeError, assign(None for i in range(2)))
             self.assertRaises(TypeError, assign({1: 1}))
 
+    def test_invalid_values_leave_store_unchanged(self):
+        values = (object(), set(), b"bytes", {"nested": object()},
+                  [1, {"nested": set()}], (1, object()), {1: "non-string key"})
+        for auto_commit in (False, True):
+            for method in ("attribute", "item", "nested item", "slice"):
+                for value in values:
+                    with self.subTest(auto_commit=auto_commit, method=method,
+                                      value_type=type(value).__name__):
+                        self.store.value = "original"
+                        self.store.nested = {"key": "original"}
+                        self.store.items = [1, 2]
+                        store = JsonStore(self._store_file, auto_commit=auto_commit)
+                        before = Path(self._store_file).read_bytes()
+                        with self.assertRaises(TypeError):
+                            if method == "attribute":
+                                store.value = value
+                            elif method == "item":
+                                store["value"] = value
+                            elif method == "nested item":
+                                store["nested.key"] = value
+                            else:
+                                store["items", :] = value
+                        self.assertEqual(store.value, "original")
+                        self.assertEqual(store.nested, {"key": "original"})
+                        self.assertEqual(store.items, [1, 2])
+                        self.assertEqual(Path(self._store_file).read_bytes(), before)
+                        with store:
+                            store.good = 1
+                        self.assertEqual(JsonStore(self._store_file).good, 1)
+
+    def test_invalid_value_cannot_poison_new_key(self):
+        for auto_commit in (False, True):
+            for assign in (setattr, lambda store, key, value: store.__setitem__(key, value)):
+                with self.subTest(auto_commit=auto_commit, assign=assign):
+                    store = JsonStore(self._store_file, auto_commit=auto_commit)
+                    with self.assertRaises(TypeError):
+                        assign(store, "bad", object())
+                    self.assertNotIn("bad", store)
+                    with store:
+                        store.good = 1
+                    self.assertEqual(JsonStore(self._store_file).good, 1)
+
+    def test_deepcopy_result_is_validated_before_assignment(self):
+        class InvalidCopy(str):
+            def __deepcopy__(self, memo):
+                return object()
+
+        class InvalidValue:
+            def __deepcopy__(self, memo):
+                return "valid-looking copy"
+
+        for assign in (setattr, lambda store, key, value: store.__setitem__(key, value)):
+            for value in (InvalidCopy("value"), InvalidValue()):
+                with self.subTest(assign=assign, value_type=type(value).__name__):
+                    with self.assertRaises(TypeError):
+                        assign(self.store, "bad", value)
+                    self.assertNotIn("bad", self.store)
+
     def test_assign_bad_keys(self):
         value = 1
         # the root object is a dict, so a string key is needed

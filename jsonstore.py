@@ -7,7 +7,6 @@ from __future__ import absolute_import
 import json
 import os
 import stat
-import sys
 from collections import OrderedDict
 from copy import deepcopy
 from tempfile import mkstemp
@@ -15,11 +14,7 @@ from tempfile import mkstemp
 __all__ = ["JsonStore"]
 
 STRING_TYPES = (str,)
-INT_TYPES = (int,)
-if sys.version_info < (3,):
-    STRING_TYPES += (unicode,)
-    INT_TYPES += (long,)
-VALUE_TYPES = (bool, int, float, type(None)) + INT_TYPES
+VALUE_TYPES = (bool, int, float, type(None))
 
 
 class JsonStore(object):
@@ -113,7 +108,6 @@ class JsonStore(object):
         Raise an exception if the object is not suitable for assignment.
 
         """
-        # pylint: disable=unicode-builtin,long-builtin
         if isinstance(obj, (dict, list)):
             if parents is None:
                 parents = []
@@ -131,7 +125,8 @@ class JsonStore(object):
             for o in obj:
                 cls._verify_object(o, parents)
         else:
-            return cls._valid_value(obj)
+            if not cls._valid_value(obj):
+                raise TypeError("unsupported JSON value type: %s" % type(obj).__name__)
 
     @classmethod
     def _valid_value(cls, value):
@@ -163,7 +158,9 @@ class JsonStore(object):
 
     def __setattr__(self, attr, value):
         self._verify_object(value)
-        self._data[attr] = deepcopy(value)
+        value = deepcopy(value)
+        self._verify_object(value)
+        self._data[attr] = value
         self._do_auto_commit()
 
     def __delattr__(self, attr):
@@ -189,11 +186,13 @@ class JsonStore(object):
         steps = self._canonical_key(key)
         path, step = steps[:-1], steps[-1]
         self._verify_object(value)
+        value = deepcopy(value)
+        self._verify_object(value)
         container = self.__get_obj(path)
         if isinstance(container, dict) and not self._valid_string(step):
             raise TypeError("%s is a dict and %s is not a string" % (path, step))
         try:
-            container[step] = deepcopy(value)
+            container[step] = value
         except (IndexError, TypeError) as e:
             raise type(e)("unable to set %s from %s: %s" % (step, path, e))
         self._do_auto_commit()
