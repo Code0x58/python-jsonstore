@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import json
 import os
+import stat
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -361,6 +362,46 @@ class Tests(unittest.TestCase):
         store = JsonStore(Path(self._store_file))
         store.value = 1
         self.assertEqual(JsonStore(self._store_file).value, 1)
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits are not supported on Windows")
+    def test_save_preserves_file_permissions(self):
+        for mode in (0o600, 0o640, 0o660):
+            with self.subTest(mode=oct(mode)):
+                os.chmod(self._store_file, mode)
+                self.store.value = mode
+                self.assertEqual(stat.S_IMODE(os.stat(self._store_file).st_mode), mode)
+                self.assertEqual(JsonStore(self._store_file).value, mode)
+
+    def test_save_recreates_removed_file(self):
+        os.unlink(self._store_file)
+        self.store.value = 1
+        self.assertEqual(JsonStore(self._store_file).value, 1)
+
+    def test_failed_replacement_cleans_up_readonly_temporary_file(self):
+        before = set(os.listdir(self._directory.name))
+        try:
+            os.chmod(self._store_file, stat.S_IREAD)
+            with patch("jsonstore.os.replace", side_effect=OSError("replacement failed")):
+                with self.assertRaisesRegex(OSError, "replacement failed"):
+                    self.store.value = 1
+            self.assertEqual(set(os.listdir(self._directory.name)), before)
+        finally:
+            os.chmod(self._store_file, stat.S_IREAD | stat.S_IWRITE)
+
+    @unittest.skipIf(os.name == "nt" or os.geteuid() == 0,
+                     "Requires POSIX directory permissions without root privileges")
+    def test_cleanup_permission_failure_is_propagated(self):
+        def lose_directory_write_permission(source, destination):
+            os.chmod(self._directory.name, 0o500)
+            raise OSError("replacement failed")
+
+        try:
+            with patch("jsonstore.os.replace", side_effect=lose_directory_write_permission):
+                with self.assertRaises(PermissionError):
+                    self.store.value = 1
+            self.assertNotIn("value", JsonStore(self._store_file))
+        finally:
+            os.chmod(self._directory.name, 0o700)
 
     def test_transaction_rollback(self):
         self.store.value = 1
