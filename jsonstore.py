@@ -108,25 +108,26 @@ class JsonStore(object):
         Raise an exception if the object is not suitable for assignment.
 
         """
-        if isinstance(obj, (dict, list)):
+        if isinstance(obj, (dict, list, tuple)):
             if parents is None:
-                parents = []
-            elif any(o is obj for o in parents):
-                raise ValueError("Cycle detected in list/dictionary")
-            parents.append(obj)
-
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                if not cls._valid_string(k):
-                    # this is necessary because of the JSON serialisation
-                    raise TypeError("a dict has non-string keys")
-                cls._verify_object(v, parents)
-        elif isinstance(obj, (list, tuple)):
-            for o in obj:
-                cls._verify_object(o, parents)
-        else:
-            if not cls._valid_value(obj):
-                raise TypeError("unsupported JSON value type: %s" % type(obj).__name__)
+                parents = set()
+            identity = id(obj)
+            if identity in parents:
+                raise ValueError("Cycle detected in list/dictionary/tuple")
+            parents.add(identity)
+            try:
+                if isinstance(obj, dict):
+                    for key, value in obj.items():
+                        if not cls._valid_string(key):
+                            raise TypeError("a dict has non-string keys")
+                        cls._verify_object(value, parents)
+                else:
+                    for value in obj:
+                        cls._verify_object(value, parents)
+            finally:
+                parents.remove(identity)
+        elif not cls._valid_value(obj):
+            raise TypeError("unsupported JSON value type: %s" % type(obj).__name__)
 
     @classmethod
     def _valid_value(cls, value):
