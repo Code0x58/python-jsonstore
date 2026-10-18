@@ -6,6 +6,7 @@ Provides a Python class that maps values to/from a JSON file
 from __future__ import absolute_import
 import json
 import os
+import stat
 import sys
 from collections import OrderedDict
 from copy import deepcopy
@@ -58,6 +59,10 @@ class JsonStore(object):
 
     def _save(self):
         output = json.dumps(self._data, indent=self._indent).encode("utf-8")
+        try:
+            mode = stat.S_IMODE(os.stat(self._path).st_mode)
+        except FileNotFoundError:
+            mode = None
         descriptor, temp = mkstemp(
             prefix="." + os.path.basename(self._path) + ".",
             suffix=".tmp",
@@ -66,12 +71,19 @@ class JsonStore(object):
         try:
             with os.fdopen(descriptor, "wb") as store:
                 store.write(output)
+            if mode is not None:
+                os.chmod(temp, mode)
             os.replace(temp, self._path)
         finally:
             try:
                 os.unlink(temp)
             except FileNotFoundError:
                 pass
+            except PermissionError:
+                if os.name != "nt":
+                    raise
+                os.chmod(temp, stat.S_IWRITE)
+                os.unlink(temp)
 
     def __init__(self, path, indent=2, auto_commit=True):
         self.__dict__.update(
