@@ -420,6 +420,38 @@ class Tests(unittest.TestCase):
             pass
         self.assertEqual(self.store.value, 1)
 
+    def test_failed_transaction_commit_restores_state(self):
+        self.store.value = {"items": [1]}
+        for auto_commit in (False, True):
+            with self.subTest(auto_commit=auto_commit):
+                store = JsonStore(self._store_file, auto_commit=auto_commit)
+                with patch("jsonstore.os.replace", side_effect=OSError("commit failed")):
+                    with self.assertRaisesRegex(OSError, "commit failed"):
+                        with store:
+                            store["value", "items", 0] = 2
+                            with store:
+                                store.extra = 3
+                self.assertEqual(store.value, {"items": [1]})
+                self.assertNotIn("extra", store)
+                self.assertEqual(JsonStore(self._store_file).value, {"items": [1]})
+                self.assertNotIn("extra", JsonStore(self._store_file))
+                self.assertEqual(store._states, [])
+
+                with store:
+                    store.value = {"items": [4]}
+                self.assertEqual(JsonStore(self._store_file).value, {"items": [4]})
+                self.store.value = {"items": [1]}
+
+    def test_interrupted_transaction_commit_restores_state(self):
+        self.store.value = 1
+        with patch.object(JsonStore, "_save", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                with self.store:
+                    self.store.value = 2
+        self.assertEqual(self.store.value, 1)
+        self.assertEqual(JsonStore(self._store_file).value, 1)
+        self.assertEqual(self.store._states, [])
+
     def test_transaction_commit(self):
         self.store.value = 1
         self.store.remove_me = "bye"

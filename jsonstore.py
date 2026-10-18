@@ -36,7 +36,11 @@ class JsonStore(object):
         if any(args):
             self.__dict__["_data"] = previous_state
         elif not self.__dict__["_states"]:
-            self._save()
+            try:
+                self._save()
+            except BaseException:
+                self.__dict__["_data"] = previous_state
+                raise
 
     def _do_auto_commit(self):
         if self._auto_commit and not self.__dict__["_states"]:
