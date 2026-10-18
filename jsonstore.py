@@ -5,10 +5,11 @@ Provides a Python class that maps values to/from a JSON file
 """
 from __future__ import absolute_import
 import json
-import os.path
+import os
 import sys
 from collections import OrderedDict
 from copy import deepcopy
+from tempfile import mkstemp
 
 __all__ = ["JsonStore"]
 
@@ -56,25 +57,28 @@ class JsonStore(object):
         self.__dict__["_data"] = data
 
     def _save(self):
-        temp = self._path + "~"
-        with open(temp, "wb") as store:
-            output = json.dumps(self._data, indent=self._indent)
-            store.write(output.encode("utf-8"))
-        
-        if sys.version_info >= (3, 3):
+        output = json.dumps(self._data, indent=self._indent).encode("utf-8")
+        descriptor, temp = mkstemp(
+            prefix="." + os.path.basename(self._path) + ".",
+            suffix=".tmp",
+            dir=os.path.dirname(os.path.abspath(self._path)),
+        )
+        try:
+            with os.fdopen(descriptor, "wb") as store:
+                store.write(output)
             os.replace(temp, self._path)
-        elif os.name == "windows":
-            os.remove(self._path)
-            os.rename(temp, self._path)
-        else:
-            os.rename(temp, self._path)
+        finally:
+            try:
+                os.unlink(temp)
+            except FileNotFoundError:
+                pass
 
     def __init__(self, path, indent=2, auto_commit=True):
         self.__dict__.update(
             {
                 "_auto_commit": auto_commit,
                 "_data": None,
-                "_path": path,
+                "_path": os.fsdecode(path),
                 "_indent": indent,
                 "_states": [],
             }
