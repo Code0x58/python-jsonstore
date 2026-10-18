@@ -5,7 +5,7 @@ from __future__ import absolute_import
 import json
 import os
 import unittest
-from tempfile import mktemp
+from tempfile import TemporaryDirectory
 
 from jsonstore import JsonStore
 
@@ -29,11 +29,10 @@ class Tests(unittest.TestCase):
     )
 
     def setUp(self):
-        self._store_file = mktemp()
+        self._directory = TemporaryDirectory()
+        self.addCleanup(self._directory.cleanup)
+        self._store_file = os.path.join(self._directory.name, "store.json")
         self.store = JsonStore(self._store_file, indent=None, auto_commit=True)
-
-    def tearDown(self):
-        os.remove(self._store_file)
 
     def _setattr(self, key, value):
         """
@@ -76,30 +75,30 @@ class Tests(unittest.TestCase):
         return handle
 
     def test_new_store(self):
-        store_file = mktemp()
+        store_file = os.path.join(self._directory.name, "new-store.json")
         JsonStore(store_file, auto_commit=True)
-        with open(self._store_file) as handle:
+        with open(store_file) as handle:
             self.assertEqual(handle.read(), "{}")
         os.remove(store_file)
 
         JsonStore(store_file, auto_commit=False)
-        with open(self._store_file) as handle:
+        with open(store_file) as handle:
             self.assertEqual(handle.read(), "{}")
         os.remove(store_file)
 
     def test_assign_valid_types(self):
         for name, value in self.TEST_DATA:
             self.store[name] = value
-            self.store[name] == value
-            getattr(self.store, name) == value
+            self.assertEqual(self.store[name], value)
+            self.assertEqual(getattr(self.store, name), value)
 
             del self.store[name]
             self.assertRaises(KeyError, self._getitem(name))
             self.assertRaises(AttributeError, self._getattr(name))
 
             setattr(self.store, name, value)
-            self.store[name] == value
-            getattr(self.store, name) == value
+            self.assertEqual(self.store[name], value)
+            self.assertEqual(getattr(self.store, name), value)
 
             delattr(self.store, name)
             self.assertRaises(KeyError, self._getitem(name))
@@ -157,7 +156,7 @@ class Tests(unittest.TestCase):
             return self.store[""]
 
     def test_empty_store(self):
-        store_file = mktemp()
+        store_file = os.path.join(self._directory.name, "empty.json")
         with open(store_file, "wb") as f:
             f.write(b"")
         self.assertTrue(JsonStore(f.name))
@@ -221,7 +220,7 @@ class Tests(unittest.TestCase):
             del self.store["dict", slice("a")]
 
     def test_context_and_deserialisation(self):
-        store_file = mktemp()
+        store_file = os.path.join(self._directory.name, "roundtrip.json")
         for name, value in self.TEST_DATA:
             if isinstance(value, tuple):
                 value = list(value)
@@ -262,7 +261,7 @@ class Tests(unittest.TestCase):
             self.assertRaises(ValueError, self.store._load)
 
     def test_auto_commit(self):
-        store_file = mktemp()
+        store_file = os.path.join(self._directory.name, "auto-commit.json")
         store = JsonStore(store_file, indent=None, auto_commit=True)
         store.value1 = 1
         with open(store_file) as handle:
@@ -272,7 +271,7 @@ class Tests(unittest.TestCase):
             self.assertEqual({"value1": 1, "value2": 2}, json.load(handle))
 
     def test_no_auto_commit(self):
-        store_file = mktemp()
+        store_file = os.path.join(self._directory.name, "no-auto-commit.json")
         store = JsonStore(store_file, indent=None, auto_commit=False)
         store.value1 = 1
         store["value2"] = 2
