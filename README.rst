@@ -1,4 +1,4 @@
-|PyPI| |Build Status| |Coverage Report|
+|PyPI| |Build Status| |Coverage Report| |Documentation|
 
 jsonstore
 =========
@@ -7,6 +7,9 @@ jsonstore
 load and save configuration containing nested dictionaries and lists.
 
 Requires Python 3.9 or newer. Tests run on CPython 3.9–3.15 and PyPy 3.11.
+
+`Documentation <https://python-jsonstore.readthedocs.io/en/latest/>`__
+includes the API reference and build instructions.
 
 Examples
 --------
@@ -94,3 +97,6 @@ across a power failure.
    :target: https://pypi.org/project/python-jsonstore/
 .. |Coverage Report| image:: https://codecov.io/gh/Code0x58/python-jsonstore/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/Code0x58/python-jsonstore
+.. |Documentation| image:: https://readthedocs.org/projects/python-jsonstore/badge/?version=latest
+   :target: https://python-jsonstore.readthedocs.io/en/latest/
+   :alt: Documentation status
