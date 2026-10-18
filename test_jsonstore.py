@@ -231,6 +231,53 @@ class Tests(unittest.TestCase):
             self.assertRaises(ValueError, method("key", test_list))
             self.assertRaises(ValueError, method("key", test_dict))
 
+    def test_shared_containers_are_not_cycles(self):
+        shared_list = [1, {"key": "value"}]
+        shared_dict = {"items": [1, 2]}
+        values = (
+            [shared_list, shared_list],
+            {"left": shared_dict, "right": shared_dict},
+            (shared_list, {"again": shared_list}),
+            {"left": (shared_dict,), "right": [shared_dict]},
+        )
+        for auto_commit in (False, True):
+            for assign in (setattr, lambda store, key, value: store.__setitem__(key, value)):
+                for value in values:
+                    with self.subTest(auto_commit=auto_commit, assign=assign,
+                                      value_type=type(value).__name__):
+                        store = JsonStore(self._store_file, auto_commit=auto_commit)
+                        with store:
+                            assign(store, "value", value)
+                        self.assertEqual(store.value, value)
+                        self.assertEqual(JsonStore(self._store_file).value,
+                                         json.loads(json.dumps(value)))
+                        self.assertEqual(shared_list, [1, {"key": "value"}])
+                        self.assertEqual(shared_dict, {"items": [1, 2]})
+
+    def test_cycles_are_rejected_without_mutation(self):
+        cyclic_list = []
+        cyclic_list.append(cyclic_list)
+        cyclic_dict = {}
+        cyclic_dict["self"] = cyclic_dict
+        cyclic_tuple = ([],)
+        cyclic_tuple[0].append(cyclic_tuple)
+        values = (cyclic_list, cyclic_dict, cyclic_tuple,
+                  {"nested": [cyclic_tuple]})
+        for auto_commit in (False, True):
+            for assign in (setattr, lambda store, key, value: store.__setitem__(key, value)):
+                for value in values:
+                    with self.subTest(auto_commit=auto_commit, assign=assign,
+                                      value_type=type(value).__name__):
+                        store = JsonStore(self._store_file, auto_commit=auto_commit)
+                        before = Path(self._store_file).read_bytes()
+                        with self.assertRaisesRegex(ValueError, "Cycle detected"):
+                            assign(store, "cycle", value)
+                        self.assertNotIn("cycle", store)
+                        self.assertEqual(Path(self._store_file).read_bytes(), before)
+                        with store:
+                            store.good = 1
+                        self.assertEqual(JsonStore(self._store_file).good, 1)
+
     def test_nested_dict_helper(self):
         self.assertRaises(KeyError, self._setitem("dictionary.noexist", None))
         self.assertRaises(KeyError, self._getitem("dictionary.noexist"))
