@@ -148,6 +148,7 @@ class JsonStore(object):
 
     def __delattr__(self, attr):
         del self._data[attr]
+        self._do_auto_commit()
 
     def __get_obj(self, steps):
         """Returns the object which is under the given path."""
@@ -190,6 +191,7 @@ class JsonStore(object):
             del obj[step]
         except (KeyError, IndexError, TypeError) as e:
             raise type(e)("unable to delete %s from %s: %s" % (step, path, e))
+        self._do_auto_commit()
 
     def __contains__(self, key):
         steps = self._canonical_key(key)
