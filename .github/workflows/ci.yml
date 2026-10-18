@@ -6,12 +6,46 @@ on:
       - main
       - master
   pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository and version tags
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.15"
+
+      - name: Build and check distributions
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build --sdist --wheel
+          python -m twine check --strict dist/*
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: distributions
+          path: dist/*
+          if-no-files-found: error
+
   tests:
+    needs: build
     runs-on: ${{ matrix.os }}
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
@@ -19,53 +53,128 @@ jobs:
           - ubuntu-latest
           - windows-latest
         python-version:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
           - "3.14"
-          - "pypy-3.9"
+          - "3.15"
+          - "pypy3.11"
         exclude:
           - os: windows-latest
-            python-version: "pypy-3.9"
+            python-version: "pypy3.11"
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Check out tests
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y zip p7zip-full
+      - name: Download distributions
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: distributions
+          path: dist
 
-      - name: Install Python dependencies
+      - name: Install wheel and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install . pytest pytest-cov
+          python -m pip install --no-cache-dir dist/*.whl pytest pytest-cov
+          mkdir -p "$RUNNER_TEMP/installed-tests"
+          cp test_jsonstore.py "$RUNNER_TEMP/installed-tests/"
 
-      - name: Run tests
-        run: pytest -vv --cov=jsonstore --cov-report=xml --junitxml=test-results.xml
+      - name: Test installed wheel outside the checkout
+        working-directory: ${{ runner.temp }}/installed-tests
+        run: |
+          python -I -c 'import jsonstore; print(jsonstore.__file__)'
+          python -I -m pytest -vv --cov=jsonstore --cov-report= --junitxml=test-results.xml
+
+      - name: Map installed coverage to repository paths
+        run: |
+          python -m coverage combine "$RUNNER_TEMP/installed-tests/.coverage"
+          python -m coverage xml -o "$RUNNER_TEMP/installed-tests/coverage.xml"
+
+      - name: Build and install wheel from source distribution
+        run: |
+          python -m pip uninstall --yes python-jsonstore
+          python -m pip install --no-cache-dir dist/*.tar.gz
+
+      - name: Test installed source distribution outside the checkout
+        working-directory: ${{ runner.temp }}/installed-tests
+        run: |
+          python -I -c 'import jsonstore; print(jsonstore.__file__)'
+          python -I -m pytest -vv
+
+      - name: Upload test reports
+        if: always() && matrix.python-version == '3.15'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/installed-tests/coverage.xml
+            ${{ runner.temp }}/installed-tests/test-results.xml
+          if-no-files-found: warn
+
+  reports:
+    if: ${{ !cancelled() && github.event_name != 'release' }}
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check whether Codecov is configured
+        id: codecov
+        env:
+          ENABLED: ${{ secrets.CODECOV_TOKEN != '' }}
+        run: echo "enabled=$ENABLED" >> "$GITHUB_OUTPUT"
+
+      - name: Check out repository for report paths
+        if: steps.codecov.outputs.enabled == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download test reports
+        id: reports
+        continue-on-error: ${{ needs.tests.result != 'success' }}
+        if: steps.codecov.outputs.enabled == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: test-reports-*
+          path: reports
+
+      - name: Find available test reports
+        id: files
+        if: steps.codecov.outputs.enabled == 'true'
+        run: |
+          python3 - <<'PYTHON'
+          import glob
+          import os
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              for name, pattern in (("coverage", "reports/*/coverage.xml"),
+                                    ("tests", "reports/*/test-results.xml")):
+                  output.write(f"{name}={','.join(sorted(glob.glob(pattern)))}\n")
+          PYTHON
 
       - name: Upload coverage to Codecov
-        if: always() && env.CODECOV_TOKEN != ''
-        uses: codecov/codecov-action@v5
+        if: steps.files.outputs.coverage != ''
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          token: ${{ env.CODECOV_TOKEN }}
-          files: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ${{ steps.files.outputs.coverage }}
+          disable_search: true
           fail_ci_if_error: true
 
       - name: Upload test results to Codecov
-        if: always() && env.CODECOV_TOKEN != ''
-        uses: codecov/codecov-action@v5
+        if: steps.files.outputs.tests != ''
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          token: ${{ env.CODECOV_TOKEN }}
-          files: ./test-results.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ${{ steps.files.outputs.tests }}
           report_type: test_results
+          disable_search: true
           fail_ci_if_error: true
